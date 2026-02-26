@@ -16,6 +16,7 @@ import SettingsPanel from "@/modules/chat/components/SettingsPanel";
 import ChatSidebar from "@/modules/chat/components/ChatSidebar";
 import { DEFAULT_MODES, type ChatMode } from "@/modules/chat/types";
 import { useMemory } from "@/modules/chat/hooks/useMemory";
+import { useGlobalMemory, shouldInjectMemory, buildMemoryPrompt } from "@/modules/chat/hooks/useGlobalMemory";
 import MemoryDashboard from "@/modules/chat/components/MemoryDashboard";
 import type { User } from "@supabase/supabase-js";
 
@@ -44,6 +45,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
   const { settings, update: updateSettings } = useUserSettings(user.id);
   const { modes: customModes, create: createMode, update: updateMode, remove: deleteMode } = useCustomModes(user.id);
   const { memories, loading: memoriesLoading, updateMemory, deleteMemory, clearAll: clearMemories, extractMemories } = useMemory(user.id);
+  const { memory: globalMemory } = useGlobalMemory();
 
   const activeConvo = conversations.find((c) => c.id === activeId) || null;
 
@@ -157,6 +159,9 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
 
     let fullContent = "";
 
+    const userText = input.trim();
+    const memoryPrompt = shouldInjectMemory(userText) ? buildMemoryPrompt(globalMemory) : undefined;
+
     await stream({
       messages: messagesForApi.map((m) => ({
         role: m.role,
@@ -165,6 +170,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
       })),
       mode: getResolvedMode(),
       customModeId: getCustomModeId(),
+      globalMemoryPrompt: memoryPrompt,
       accessToken: (await (await import("@/integrations/supabase/client")).supabase.auth.getSession()).data.session?.access_token,
       onPhase: setStreamPhase,
       onDelta: (text) => {

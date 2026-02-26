@@ -12,6 +12,7 @@ interface StreamOptions {
   messages: StreamMessage[];
   mode?: string;
   customModeId?: string;
+  globalMemoryPrompt?: string;
   accessToken?: string;
   onDelta: (text: string) => void;
   onPhase: (phase: "analyzing" | "generating" | "streaming") => void;
@@ -57,6 +58,7 @@ export function useChatStream() {
           })),
           mode: opts.mode,
           custom_mode_id: opts.customModeId,
+          global_memory_prompt: opts.globalMemoryPrompt,
         }),
         signal: controller.signal,
       });

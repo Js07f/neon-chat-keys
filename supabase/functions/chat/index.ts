@@ -13,7 +13,12 @@ Quando apropriado, pode usar leve espirituosidade sutil.
 Explique com clareza, demonstre domínio técnico e evite informalidade excessiva.
 Seja objetivo quando necessário e detalhado quando útil.
 Priorize precisão, atualidade e raciocínio estruturado.
-Use Markdown para formatar suas respostas quando apropriado. Quando o usuário enviar imagens, analise-as detalhadamente.`;
+Use Markdown para formatar suas respostas quando apropriado. Quando o usuário enviar imagens, analise-as detalhadamente.
+
+Evite repetir estruturas idênticas entre respostas consecutivas.
+Evite sempre usar listas numeradas — varie entre parágrafos, tópicos, tabelas e texto corrido.
+Varie formato, ritmo e construção quando possível.
+Não reafirme comportamentos ou preferências previamente demonstrados.`;
 
 const DEFAULT_MODE_INSTRUCTIONS: Record<string, string> = {
   study:
@@ -155,7 +160,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, mode, custom_mode_id } = await req.json();
+    const { messages, mode, custom_mode_id, global_memory_prompt } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
@@ -182,6 +187,10 @@ serve(async (req) => {
 
     const apiMessages: any[] = [{ role: "system", content: systemPrompt }];
 
+    // Conditional global memory injection — only when client determined relevance
+    if (global_memory_prompt && typeof global_memory_prompt === "string") {
+      apiMessages.push({ role: "system", content: global_memory_prompt });
+    }
     for (const m of messages) {
       apiMessages.push({
         role: m.role,
