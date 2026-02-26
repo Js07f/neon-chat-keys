@@ -6,12 +6,28 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function buildContent(text: string, images?: string[]) {
+async function urlToBase64DataUri(url: string): Promise<string> {
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`Failed to fetch image: ${resp.status}`);
+    const buf = await resp.arrayBuffer();
+    const contentType = resp.headers.get("content-type") || "image/jpeg";
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+    return `data:${contentType};base64,${base64}`;
+  } catch (e) {
+    console.error("Failed to convert image URL to base64:", url, e);
+    throw e;
+  }
+}
+
+async function buildContent(text: string, images?: string[]) {
   if (!images || images.length === 0) return text;
 
   const parts: any[] = [{ type: "text", text }];
   for (const url of images) {
-    parts.push({ type: "image_url", image_url: { url } });
+    // Convert URL to base64 data URI for the AI gateway
+    const dataUri = url.startsWith("data:") ? url : await urlToBase64DataUri(url);
+    parts.push({ type: "image_url", image_url: { url: dataUri } });
   }
   return parts;
 }
@@ -32,11 +48,14 @@ serve(async (req) => {
         content:
           "Você é um assistente de IA útil e amigável. Responda de forma clara e concisa. Use Markdown para formatar suas respostas quando apropriado. Quando o usuário enviar imagens, analise-as detalhadamente.",
       },
-      ...messages.map((m: any) => ({
-        role: m.role,
-        content: buildContent(m.content, m.images),
-      })),
     ];
+
+    for (const m of messages) {
+      apiMessages.push({
+        role: m.role,
+        content: await buildContent(m.content, m.images),
+      });
+    }
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
