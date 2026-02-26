@@ -7,11 +7,18 @@ import { storage, type Conversation, type ChatMessage } from "@/lib/storage";
 import { useToast } from "@/hooks/use-toast";
 import { useImageUpload } from "@/modules/chat/hooks/useImageUpload";
 import { useChatStream } from "@/modules/chat/hooks/useChatStream";
+import { useUserSettings } from "@/modules/chat/hooks/useUserSettings";
+import { useCustomModes } from "@/modules/chat/hooks/useCustomModes";
 import ImageUploader from "@/modules/chat/components/ImageUploader";
 import ImagePreviewGrid from "@/modules/chat/components/ImagePreviewGrid";
 import MessageBubble from "@/modules/chat/components/MessageBubble";
+import ModeSelector from "@/modules/chat/components/ModeSelector";
+import SettingsPanel from "@/modules/chat/components/SettingsPanel";
+import { DEFAULT_MODES, type ChatMode } from "@/modules/chat/types";
+import type { User } from "@supabase/supabase-js";
 
 interface ChatPageProps {
+  user: User;
   onLogout: () => void;
 }
 
@@ -19,20 +26,28 @@ function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
-export default function ChatPage({ onLogout }: ChatPageProps) {
+export default function ChatPage({ user, onLogout }: ChatPageProps) {
   const [conversations, setConversations] = useState<Conversation[]>(storage.getConversations());
   const [activeId, setActiveId] = useState<string | null>(conversations[0]?.id || null);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [streamPhase, setStreamPhase] = useState<"analyzing" | "generating" | "streaming" | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [currentMode, setCurrentMode] = useState<ChatMode>("default");
   const scrollRef = useRef<HTMLDivElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { images, addFiles, addFromClipboard, removeImage, clearImages, getImageUrls, isUploading } = useImageUpload();
   const { stream, abort } = useChatStream();
+  const { settings, update: updateSettings } = useUserSettings(user.id);
+  const { modes: customModes, create: createMode, update: updateMode, remove: deleteMode } = useCustomModes(user.id);
 
   const activeConvo = conversations.find((c) => c.id === activeId) || null;
+
+  // Set default mode from settings
+  useEffect(() => {
+    if (settings?.default_mode) setCurrentMode(settings.default_mode);
+  }, [settings?.default_mode]);
 
   useEffect(() => {
     storage.saveConversations(conversations);
@@ -44,7 +59,6 @@ export default function ChatPage({ onLogout }: ChatPageProps) {
     }
   }, [activeConvo?.messages]);
 
-  // Clipboard paste handler
   useEffect(() => {
     const handler = (e: ClipboardEvent) => addFromClipboard(e);
     document.addEventListener("paste", handler);
@@ -68,6 +82,16 @@ export default function ChatPage({ onLogout }: ChatPageProps) {
     setConversations((prev) => prev.filter((c) => c.id !== id));
     setActiveId((current) => (current === id ? null : current));
   }, []);
+
+  const getResolvedMode = (): string | undefined => {
+    if (currentMode === "default") return undefined;
+    return currentMode;
+  };
+
+  const getCustomModeId = (): string | undefined => {
+    if (DEFAULT_MODES[currentMode]) return undefined;
+    return currentMode; // It's a custom mode ID
+  };
 
   const sendMessage = async () => {
     if ((!input.trim() && images.length === 0) || streaming || isUploading) return;
@@ -131,6 +155,9 @@ export default function ChatPage({ onLogout }: ChatPageProps) {
         content: m.content,
         images: m.images,
       })),
+      mode: getResolvedMode(),
+      customModeId: getCustomModeId(),
+      accessToken: (await (await import("@/integrations/supabase/client")).supabase.auth.getSession()).data.session?.access_token,
       onPhase: setStreamPhase,
       onDelta: (text) => {
         fullContent += text;
@@ -196,11 +223,6 @@ export default function ChatPage({ onLogout }: ChatPageProps) {
     toast({ title: "Histórico limpo" });
   };
 
-  const handleLogout = () => {
-    storage.removeLicenseKey();
-    onLogout();
-  };
-
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
@@ -255,7 +277,7 @@ export default function ChatPage({ onLogout }: ChatPageProps) {
             <Trash2 className="w-3.5 h-3.5 mr-2" />
             Limpar histórico
           </Button>
-          <Button variant="ghost" size="sm" className="w-full justify-start text-xs text-destructive" onClick={handleLogout}>
+          <Button variant="ghost" size="sm" className="w-full justify-start text-xs text-destructive" onClick={onLogout}>
             <LogOut className="w-3.5 h-3.5 mr-2" />
             Sair
           </Button>
@@ -270,10 +292,21 @@ export default function ChatPage({ onLogout }: ChatPageProps) {
         onDrop={handleDrop}
       >
         {/* Header */}
-        <div className="h-12 border-b border-border flex items-center px-4 gap-3 shrink-0">
+        <div className="h-auto min-h-[48px] border-b border-border flex flex-wrap items-center px-4 gap-3 py-2 shrink-0">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSidebarOpen(!sidebarOpen)}>
             {sidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
           </Button>
+          <div className="flex-1 min-w-0">
+            <ModeSelector value={currentMode} onChange={setCurrentMode} customModes={customModes} />
+          </div>
+          <SettingsPanel
+            settings={settings}
+            customModes={customModes}
+            onUpdateSettings={updateSettings}
+            onCreateMode={createMode}
+            onUpdateMode={updateMode}
+            onDeleteMode={deleteMode}
+          />
         </div>
 
         {/* Messages */}

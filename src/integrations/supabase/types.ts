@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      custom_modes: {
+        Row: {
+          created_at: string
+          id: string
+          instructions: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instructions: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instructions?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       license_keys: {
         Row: {
           created_at: string
@@ -52,6 +76,36 @@ export type Database = {
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          created_at: string
+          default_mode: string
+          personality_prompt: string | null
+          response_style: string
+          temperature_preference: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_mode?: string
+          personality_prompt?: string | null
+          response_style?: string
+          temperature_preference?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_mode?: string
+          personality_prompt?: string | null
+          response_style?: string
+          temperature_preference?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
