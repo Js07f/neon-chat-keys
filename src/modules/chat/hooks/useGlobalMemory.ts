@@ -40,39 +40,39 @@ function save(memory: GlobalMemory) {
 }
 
 const MEMORY_TRIGGERS = [
-  "projeto", "arquitetura", "produto", "estrutura",
-  "planejamento", "estratégia", "stack", "roadmap",
-  "objetivo", "meta", "plano", "sistema",
+  "planejamento", "planejar", "roadmap",
+  "arquitetura", "estrutura do sistema", "design do sistema",
+  "construir produto", "produto digital", "mvp", "saas",
+  "decisão técnica", "qual stack", "qual tecnologia", "escolher entre",
+  "organização", "organizar sistema", "módulos", "microserviço",
+  "estratégia técnica", "estratégia de produto",
 ];
 
+const MIN_LENGTH_FOR_MEMORY = 20;
+
 export function shouldInjectMemory(userMessage: string): boolean {
+  if (userMessage.length < MIN_LENGTH_FOR_MEMORY) return false;
   const lower = userMessage.toLowerCase();
   return MEMORY_TRIGGERS.some((t) => lower.includes(t));
 }
 
 export function buildMemoryPrompt(memory: GlobalMemory): string {
   const parts: string[] = [
-    "Ajuste o estilo de resposta com base no perfil implícito do usuário.",
+    "Esta pergunta envolve planejamento, arquitetura ou decisões técnicas.",
+    "Ajuste sutilmente o estilo com base no perfil implícito do usuário.",
     "",
-    "Regras:",
-    "- Não mencione o perfil explicitamente.",
-    "- Não repita padrões estruturais idênticos.",
-    "- Varie ritmo e construção entre respostas.",
-    "- Use memória apenas quando relevante ao contexto.",
-    "- Evite reafirmar preferências já implícitas.",
-    "- Seja natural.",
+    "Regras estritas:",
+    "- Não mencione o perfil ou a memória.",
+    "- Não expanda desnecessariamente.",
+    "- Para perguntas diretas dentro do tema, seja objetivo.",
+    "- Varie formato e ritmo entre respostas.",
+    "- Seja natural, nunca robótico.",
     "",
-    `Tom preferido: ${memory.styleProfile.tone}.`,
-    `Nível de detalhe: ${memory.styleProfile.verbosity}.`,
-    `Estrutura: ${memory.styleProfile.structure}.`,
+    `Tom: ${memory.styleProfile.tone}. Detalhe: ${memory.styleProfile.verbosity}. Estrutura: ${memory.styleProfile.structure}.`,
   ];
 
   if (memory.longTermGoals.length > 0) {
-    parts.push("", "Direcione respostas considerando os interesses de longo prazo do usuário de forma sutil.");
-  }
-
-  if (memory.behavioralFlags.length > 0) {
-    parts.push("", "Considere sutilmente as seguintes preferências comportamentais sem mencioná-las.");
+    parts.push("Considere sutilmente os interesses de longo prazo do usuário.");
   }
 
   return parts.join("\n");
