@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.chat]
 verify_jwt = false
+
+[functions.extract-memory]
+verify_jwt = false
