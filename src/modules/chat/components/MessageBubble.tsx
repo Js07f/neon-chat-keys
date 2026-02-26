@@ -1,7 +1,10 @@
 import { Bot, User, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import rehypeHighlight from "rehype-highlight";
+import "highlight.js/styles/github-dark.css";
 import type { ChatMessage } from "@/lib/storage";
 import { useState } from "react";
+import CodeBlock from "./CodeBlock";
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -87,8 +90,13 @@ export default function MessageBubble({ message, streamPhase, isLast }: MessageB
         ) : isUser ? (
           <span className="whitespace-pre-wrap">{message.content}</span>
         ) : message.content ? (
-          <div className="prose prose-invert prose-sm max-w-none [&_p]:my-1 [&_pre]:bg-background/50 [&_pre]:p-3 [&_pre]:rounded-lg [&_code]:font-mono [&_code]:text-primary">
-            <ReactMarkdown>{message.content}</ReactMarkdown>
+          <div className="prose prose-invert prose-sm max-w-none [&_p]:my-1 [&_pre]:bg-transparent [&_pre]:p-0 [&_code]:font-mono">
+            <ReactMarkdown
+              rehypePlugins={[rehypeHighlight]}
+              components={{ code: CodeBlock as any }}
+            >
+              {message.content}
+            </ReactMarkdown>
           </div>
         ) : null}
       </div>
