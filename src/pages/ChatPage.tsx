@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Loader2, AlertTriangle, Bot, User, Plus, Trash2, Download, LogOut, MessageSquare, PanelLeftClose, PanelLeft } from "lucide-react";
+import { Send, Loader2, Bot, User, Plus, Trash2, Download, LogOut, MessageSquare, PanelLeftClose, PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { storage, type Conversation, type ChatMessage } from "@/lib/storage";
-import { streamOllamaResponse, checkOllamaConnection } from "@/lib/ollama";
+
 import { useToast } from "@/hooks/use-toast";
 
 interface ChatPageProps {
@@ -20,7 +20,6 @@ export default function ChatPage({ onLogout }: ChatPageProps) {
   const [activeId, setActiveId] = useState<string | null>(conversations[0]?.id || null);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [ollamaOnline, setOllamaOnline] = useState<boolean | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -28,9 +27,6 @@ export default function ChatPage({ onLogout }: ChatPageProps) {
 
   const activeConvo = conversations.find((c) => c.id === activeId) || null;
 
-  useEffect(() => {
-    checkOllamaConnection().then(setOllamaOnline);
-  }, []);
 
   useEffect(() => {
     storage.saveConversations(conversations);
@@ -112,18 +108,15 @@ export default function ChatPage({ onLogout }: ChatPageProps) {
       const convo = updatedConversations.find((c) => c.id === currentId)!;
       const messagesForApi = convo.messages.slice(0, -1); // exclude empty assistant msg
 
-      let fullContent = "";
-      for await (const chunk of streamOllamaResponse(messagesForApi)) {
-        fullContent += chunk;
-        setConversations((prev) =>
-          prev.map((c) => {
-            if (c.id !== currentId) return c;
-            const msgs = [...c.messages];
-            msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: fullContent };
-            return { ...c, messages: msgs };
-          })
-        );
-      }
+      // TODO: integrate AI response provider
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id !== currentId) return c;
+          const msgs = [...c.messages];
+          msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: "⚠️ Nenhum provedor de IA configurado." };
+          return { ...c, messages: msgs };
+        })
+      );
     } catch (err: any) {
       setConversations((prev) =>
         prev.map((c) => {
@@ -240,18 +233,6 @@ export default function ChatPage({ onLogout }: ChatPageProps) {
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSidebarOpen(!sidebarOpen)}>
             {sidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
           </Button>
-          {ollamaOnline === false && (
-            <div className="flex items-center gap-1.5 text-xs text-destructive">
-              <AlertTriangle className="w-3.5 h-3.5" />
-              <span>Ollama offline — inicie com <code className="font-mono bg-secondary px-1 rounded">ollama serve</code></span>
-            </div>
-          )}
-          {ollamaOnline === true && (
-            <div className="flex items-center gap-1.5 text-xs text-neon-cyan">
-              <span className="w-2 h-2 rounded-full bg-neon-cyan animate-pulse-neon" />
-              Ollama conectado
-            </div>
-          )}
         </div>
 
         {/* Messages */}
@@ -260,7 +241,7 @@ export default function ChatPage({ onLogout }: ChatPageProps) {
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4 text-muted-foreground">
               <Bot className="w-12 h-12 opacity-30" />
               <p className="text-lg">Inicie uma conversa com a IA</p>
-              <p className="text-sm">As respostas vêm do Ollama rodando localmente</p>
+              <p className="text-sm">Envie uma mensagem para começar</p>
             </div>
           ) : (
             activeConvo.messages.map((msg) => (
