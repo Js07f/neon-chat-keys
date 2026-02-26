@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Loader2, Bot, Plus, Trash2, Download, LogOut, MessageSquare, PanelLeftClose, PanelLeft } from "lucide-react";
+import { Send, Loader2, Bot, PanelLeftClose, PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { storage, type Conversation, type ChatMessage } from "@/lib/storage";
 import { useToast } from "@/hooks/use-toast";
 import { useImageUpload } from "@/modules/chat/hooks/useImageUpload";
@@ -14,6 +13,7 @@ import ImagePreviewGrid from "@/modules/chat/components/ImagePreviewGrid";
 import MessageBubble from "@/modules/chat/components/MessageBubble";
 import ModeSelector from "@/modules/chat/components/ModeSelector";
 import SettingsPanel from "@/modules/chat/components/SettingsPanel";
+import ChatSidebar from "@/modules/chat/components/ChatSidebar";
 import { DEFAULT_MODES, type ChatMode } from "@/modules/chat/types";
 import { useMemory } from "@/modules/chat/hooks/useMemory";
 import MemoryDashboard from "@/modules/chat/components/MemoryDashboard";
@@ -47,7 +47,6 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
 
   const activeConvo = conversations.find((c) => c.id === activeId) || null;
 
-  // Set default mode from settings
   useEffect(() => {
     if (settings?.default_mode) setCurrentMode(settings.default_mode);
   }, [settings?.default_mode]);
@@ -58,7 +57,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
     }
   }, [activeConvo?.messages]);
 
@@ -86,6 +85,12 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
     setActiveId((current) => (current === id ? null : current));
   }, []);
 
+  const togglePin = useCallback((id: string) => {
+    setConversations((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c))
+    );
+  }, []);
+
   const getResolvedMode = (): string | undefined => {
     if (currentMode === "default") return undefined;
     return currentMode;
@@ -93,7 +98,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
 
   const getCustomModeId = (): string | undefined => {
     if (DEFAULT_MODES[currentMode]) return undefined;
-    return currentMode; // It's a custom mode ID
+    return currentMode;
   };
 
   const sendMessage = async () => {
@@ -176,7 +181,6 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
       onDone: () => {
         setStreaming(false);
         setStreamPhase(null);
-        // Extract memories silently in background
         const finalConvo = conversations.find((c) => c.id === currentId);
         if (finalConvo && finalConvo.messages.length >= 2) {
           const lastMsgs = finalConvo.messages.slice(-6).map((m) => ({
@@ -241,59 +245,19 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
       <div
         className={`${
           sidebarOpen ? "w-72" : "w-0"
-        } transition-all duration-300 overflow-hidden border-r border-border bg-sidebar flex flex-col shrink-0`}
+        } transition-all duration-300 overflow-hidden border-r border-border bg-sidebar shrink-0`}
       >
-        <div className="p-3 border-b border-border flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-primary neon-text truncate">NeonChat</h2>
-          <Button variant="ghost" size="icon" onClick={createConversation} className="h-8 w-8 shrink-0">
-            <Plus className="w-4 h-4" />
-          </Button>
-        </div>
-
-        <ScrollArea className="flex-1 scrollbar-thin">
-          <div className="p-2 space-y-1">
-            {conversations.map((c) => (
-              <div
-                key={c.id}
-                className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors ${
-                  c.id === activeId
-                    ? "bg-primary/15 text-primary neon-border"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent"
-                }`}
-                onClick={() => setActiveId(c.id)}
-              >
-                <MessageSquare className="w-4 h-4 shrink-0 opacity-50" />
-                <span className="truncate flex-1">{c.title}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 opacity-0 group-hover:opacity-100 shrink-0"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteConversation(c.id);
-                  }}
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-
-        <div className="p-3 border-t border-border space-y-1">
-          <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={exportHistory}>
-            <Download className="w-3.5 h-3.5 mr-2" />
-            Exportar JSON
-          </Button>
-          <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={clearHistory}>
-            <Trash2 className="w-3.5 h-3.5 mr-2" />
-            Limpar histórico
-          </Button>
-          <Button variant="ghost" size="sm" className="w-full justify-start text-xs text-destructive" onClick={onLogout}>
-            <LogOut className="w-3.5 h-3.5 mr-2" />
-            Sair
-          </Button>
-        </div>
+        <ChatSidebar
+          conversations={conversations}
+          activeId={activeId}
+          onSelect={setActiveId}
+          onCreate={createConversation}
+          onDelete={deleteConversation}
+          onTogglePin={togglePin}
+          onExport={exportHistory}
+          onClearAll={clearHistory}
+          onLogout={onLogout}
+        />
       </div>
 
       {/* Main area */}
@@ -330,24 +294,35 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
           </div>
         </div>
 
-        {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-4">
-          {!activeConvo || activeConvo.messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center space-y-4 text-muted-foreground">
-              <Bot className="w-12 h-12 opacity-30" />
-              <p className="text-lg">Inicie uma conversa com a IA</p>
-              <p className="text-sm">Envie uma mensagem ou imagem para começar</p>
-            </div>
-          ) : (
-            activeConvo.messages.map((msg, idx) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                streamPhase={streamPhase}
-                isLast={idx === activeConvo.messages.length - 1}
-              />
-            ))
-          )}
+        {/* Messages - centered content */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
+          <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
+            {!activeConvo || activeConvo.messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4 text-muted-foreground">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center neon-border">
+                  <Bot className="w-8 h-8 text-primary opacity-60" />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-lg font-medium text-foreground">Como posso ajudar?</p>
+                  <p className="text-sm">Envie uma mensagem ou imagem para começar</p>
+                </div>
+              </div>
+            ) : (
+              activeConvo.messages.map((msg, idx) => (
+                <div
+                  key={msg.id}
+                  className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300"
+                  style={{ animationDelay: `${Math.min(idx * 30, 150)}ms` }}
+                >
+                  <MessageBubble
+                    message={msg}
+                    streamPhase={streamPhase}
+                    isLast={idx === activeConvo.messages.length - 1}
+                  />
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
         {/* Input */}
