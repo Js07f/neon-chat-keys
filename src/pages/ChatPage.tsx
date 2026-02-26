@@ -108,15 +108,70 @@ export default function ChatPage({ onLogout }: ChatPageProps) {
       const convo = updatedConversations.find((c) => c.id === currentId)!;
       const messagesForApi = convo.messages.slice(0, -1); // exclude empty assistant msg
 
-      // TODO: integrate AI response provider
-      setConversations((prev) =>
-        prev.map((c) => {
-          if (c.id !== currentId) return c;
-          const msgs = [...c.messages];
-          msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: "⚠️ Nenhum provedor de IA configurado." };
-          return { ...c, messages: msgs };
-        })
-      );
+      const apiMessages = messagesForApi.map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+      const resp = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ messages: apiMessages }),
+      });
+
+      if (!resp.ok) {
+        const errorData = await resp.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erro ${resp.status}`);
+      }
+
+      if (!resp.body) throw new Error("Sem corpo na resposta");
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = "";
+      let fullContent = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              fullContent += content;
+              setConversations((prev) =>
+                prev.map((c) => {
+                  if (c.id !== currentId) return c;
+                  const msgs = [...c.messages];
+                  msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: fullContent };
+                  return { ...c, messages: msgs };
+                })
+              );
+            }
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
     } catch (err: any) {
       setConversations((prev) =>
         prev.map((c) => {
