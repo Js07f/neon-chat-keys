@@ -6,6 +6,16 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function buildContent(text: string, images?: string[]) {
+  if (!images || images.length === 0) return text;
+
+  const parts: any[] = [{ type: "text", text }];
+  for (const url of images) {
+    parts.push({ type: "image_url", image_url: { url } });
+  }
+  return parts;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -15,6 +25,18 @@ serve(async (req) => {
     const { messages } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const apiMessages = [
+      {
+        role: "system",
+        content:
+          "Você é um assistente de IA útil e amigável. Responda de forma clara e concisa. Use Markdown para formatar suas respostas quando apropriado. Quando o usuário enviar imagens, analise-as detalhadamente.",
+      },
+      ...messages.map((m: any) => ({
+        role: m.role,
+        content: buildContent(m.content, m.images),
+      })),
+    ];
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -26,14 +48,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           model: "google/gemini-3-flash-preview",
-          messages: [
-            {
-              role: "system",
-              content:
-                "Você é um assistente de IA útil e amigável. Responda de forma clara e concisa. Use Markdown para formatar suas respostas quando apropriado.",
-            },
-            ...messages,
-          ],
+          messages: apiMessages,
           stream: true,
         }),
       }
