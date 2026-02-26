@@ -10,6 +10,9 @@ interface StreamMessage {
 
 interface StreamOptions {
   messages: StreamMessage[];
+  mode?: string;
+  customModeId?: string;
+  accessToken?: string;
   onDelta: (text: string) => void;
   onPhase: (phase: "analyzing" | "generating" | "streaming") => void;
   onDone: () => void;
@@ -35,18 +38,25 @@ export function useChatStream() {
     else opts.onPhase("generating");
 
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      };
+      if (opts.accessToken) {
+        headers["Authorization"] = `Bearer ${opts.accessToken}`;
+      }
+
       const resp = await fetch(CHAT_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
+        headers,
         body: JSON.stringify({
           messages: opts.messages.map((m) => ({
             role: m.role,
             content: m.content,
             images: m.images,
           })),
+          mode: opts.mode,
+          custom_mode_id: opts.customModeId,
         }),
         signal: controller.signal,
       });
