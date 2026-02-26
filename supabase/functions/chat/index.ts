@@ -32,13 +32,26 @@ const RESPONSE_STYLE_INSTRUCTIONS: Record<string, string> = {
   detailed: "Forneça respostas detalhadas e aprofundadas. Explore nuances, dê exemplos extensos e cubra todos os aspectos relevantes.",
 };
 
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 8192;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    for (let j = 0; j < chunk.length; j++) {
+      binary += String.fromCharCode(chunk[j]);
+    }
+  }
+  return btoa(binary);
+}
+
 async function urlToBase64DataUri(url: string): Promise<string> {
   try {
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`Failed to fetch image: ${resp.status}`);
     const buf = await resp.arrayBuffer();
     const contentType = resp.headers.get("content-type") || "image/jpeg";
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+    const base64 = arrayBufferToBase64(buf);
     return `data:${contentType};base64,${base64}`;
   } catch (e) {
     console.error("Failed to convert image URL to base64:", url, e);
