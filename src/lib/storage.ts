@@ -13,6 +13,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: string;
+  images?: string[];
 }
 
 const STORAGE_KEY = "neonchat_conversations";
