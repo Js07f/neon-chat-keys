@@ -62,6 +62,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_memory: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          id: string
+          importance_score: number
+          last_updated: string
+          pinned: boolean
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          content: string
+          created_at?: string
+          id?: string
+          importance_score?: number
+          last_updated?: string
+          pinned?: boolean
+          user_id: string
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          id?: string
+          importance_score?: number
+          last_updated?: string
+          pinned?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string

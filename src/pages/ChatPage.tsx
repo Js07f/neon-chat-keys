@@ -15,6 +15,8 @@ import MessageBubble from "@/modules/chat/components/MessageBubble";
 import ModeSelector from "@/modules/chat/components/ModeSelector";
 import SettingsPanel from "@/modules/chat/components/SettingsPanel";
 import { DEFAULT_MODES, type ChatMode } from "@/modules/chat/types";
+import { useMemory } from "@/modules/chat/hooks/useMemory";
+import MemoryDashboard from "@/modules/chat/components/MemoryDashboard";
 import type { User } from "@supabase/supabase-js";
 
 interface ChatPageProps {
@@ -41,6 +43,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
   const { stream, abort } = useChatStream();
   const { settings, update: updateSettings } = useUserSettings(user.id);
   const { modes: customModes, create: createMode, update: updateMode, remove: deleteMode } = useCustomModes(user.id);
+  const { memories, loading: memoriesLoading, updateMemory, deleteMemory, clearAll: clearMemories, extractMemories } = useMemory(user.id);
 
   const activeConvo = conversations.find((c) => c.id === activeId) || null;
 
@@ -173,6 +176,15 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
       onDone: () => {
         setStreaming(false);
         setStreamPhase(null);
+        // Extract memories silently in background
+        const finalConvo = conversations.find((c) => c.id === currentId);
+        if (finalConvo && finalConvo.messages.length >= 2) {
+          const lastMsgs = finalConvo.messages.slice(-6).map((m) => ({
+            role: m.role,
+            content: m.content,
+          }));
+          extractMemories(lastMsgs);
+        }
       },
       onError: (error) => {
         setConversations((prev) =>
@@ -299,14 +311,23 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
           <div className="flex-1 min-w-0">
             <ModeSelector value={currentMode} onChange={setCurrentMode} customModes={customModes} />
           </div>
-          <SettingsPanel
-            settings={settings}
-            customModes={customModes}
-            onUpdateSettings={updateSettings}
-            onCreateMode={createMode}
-            onUpdateMode={updateMode}
-            onDeleteMode={deleteMode}
-          />
+          <div className="flex items-center gap-1">
+            <MemoryDashboard
+              memories={memories}
+              loading={memoriesLoading}
+              onUpdate={updateMemory}
+              onDelete={deleteMemory}
+              onClearAll={clearMemories}
+            />
+            <SettingsPanel
+              settings={settings}
+              customModes={customModes}
+              onUpdateSettings={updateSettings}
+              onCreateMode={createMode}
+              onUpdateMode={updateMode}
+              onDeleteMode={deleteMode}
+            />
+          </div>
         </div>
 
         {/* Messages */}

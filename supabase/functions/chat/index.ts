@@ -56,6 +56,28 @@ async function buildContent(text: string, images?: string[]) {
   return parts;
 }
 
+async function fetchUserMemories(supabaseClient: any, userId: string): Promise<string> {
+  try {
+    const { data: memories } = await supabaseClient
+      .from("user_memory")
+      .select("content, category, importance_score, pinned")
+      .eq("user_id", userId)
+      .order("pinned", { ascending: false })
+      .order("importance_score", { ascending: false })
+      .limit(10);
+
+    if (!memories || memories.length === 0) return "";
+
+    const lines = memories.map(
+      (m: any) => `- [${m.category}] ${m.content}`
+    );
+    return `Contexto estratégico do usuário (memória de longo prazo):\n${lines.join("\n")}`;
+  } catch (e) {
+    console.error("Error fetching user memories:", e);
+    return "";
+  }
+}
+
 async function buildSystemPrompt(
   supabaseClient: any,
   userId: string | null,
@@ -85,6 +107,10 @@ async function buildSystemPrompt(
     } catch (e) {
       console.error("Error fetching user settings:", e);
     }
+
+    // Layer 2.5: Strategic memory injection
+    const memoryContext = await fetchUserMemories(supabaseClient, userId);
+    if (memoryContext) layers.push(memoryContext);
   }
 
   // Layer 3: Mode instructions
