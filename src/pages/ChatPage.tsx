@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Loader2, Bot, PanelLeftClose, PanelLeft } from "lucide-react";
+import { Send, Loader2, Bot, PanelLeftClose, PanelLeft, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { storage, type Conversation, type ChatMessage } from "@/lib/storage";
 import { useToast } from "@/hooks/use-toast";
 import { useImageUpload } from "@/modules/chat/hooks/useImageUpload";
 import { useChatStream } from "@/modules/chat/hooks/useChatStream";
 import { useUserSettings } from "@/modules/chat/hooks/useUserSettings";
 import { useCustomModes } from "@/modules/chat/hooks/useCustomModes";
+import { useIsMobile } from "@/hooks/use-mobile";
 import ImageUploader from "@/modules/chat/components/ImageUploader";
 import ImagePreviewGrid from "@/modules/chat/components/ImagePreviewGrid";
 import MessageBubble from "@/modules/chat/components/MessageBubble";
@@ -35,7 +37,9 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [streamPhase, setStreamPhase] = useState<"analyzing" | "generating" | "streaming" | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [currentMode, setCurrentMode] = useState<ChatMode>("default");
   const scrollRef = useRef<HTMLDivElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
@@ -245,26 +249,45 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
     toast({ title: "Histórico limpo" });
   };
 
+  const sidebarContent = (
+    <ChatSidebar
+      conversations={conversations}
+      activeId={activeId}
+      onSelect={(id) => {
+        setActiveId(id);
+        if (isMobile) setMobileSidebarOpen(false);
+      }}
+      onCreate={() => {
+        createConversation();
+        if (isMobile) setMobileSidebarOpen(false);
+      }}
+      onDelete={deleteConversation}
+      onTogglePin={togglePin}
+      onExport={exportHistory}
+      onClearAll={clearHistory}
+      onLogout={onLogout}
+    />
+  );
+
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar */}
-      <div
-        className={`${
-          sidebarOpen ? "w-72" : "w-0"
-        } transition-all duration-300 overflow-hidden border-r border-border bg-sidebar shrink-0`}
-      >
-        <ChatSidebar
-          conversations={conversations}
-          activeId={activeId}
-          onSelect={setActiveId}
-          onCreate={createConversation}
-          onDelete={deleteConversation}
-          onTogglePin={togglePin}
-          onExport={exportHistory}
-          onClearAll={clearHistory}
-          onLogout={onLogout}
-        />
-      </div>
+    <div className="flex h-[100dvh] overflow-hidden bg-background">
+      {/* Mobile Sidebar as Sheet */}
+      {isMobile ? (
+        <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+          <SheetContent side="left" className="w-[280px] p-0 bg-sidebar border-border">
+            {sidebarContent}
+          </SheetContent>
+        </Sheet>
+      ) : (
+        /* Desktop Sidebar */
+        <div
+          className={`${
+            sidebarOpen ? "w-72" : "w-0"
+          } transition-all duration-300 overflow-hidden border-r border-border bg-sidebar shrink-0`}
+        >
+          {sidebarContent}
+        </div>
+      )}
 
       {/* Main area */}
       <div
@@ -274,14 +297,20 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
         onDrop={handleDrop}
       >
         {/* Header */}
-        <div className="h-auto min-h-[48px] border-b border-border flex flex-wrap items-center px-4 gap-3 py-2 shrink-0">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSidebarOpen(!sidebarOpen)}>
-            {sidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
-          </Button>
-          <div className="flex-1 min-w-0">
+        <div className="h-auto min-h-[48px] border-b border-border flex items-center px-3 sm:px-4 gap-2 sm:gap-3 py-2 shrink-0">
+          {isMobile ? (
+            <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => setMobileSidebarOpen(true)}>
+              <Menu className="w-5 h-5" />
+            </Button>
+          ) : (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSidebarOpen(!sidebarOpen)}>
+              {sidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
+            </Button>
+          )}
+          <div className="flex-1 min-w-0 overflow-x-auto scrollbar-thin">
             <ModeSelector value={currentMode} onChange={setCurrentMode} customModes={customModes} />
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             <MemoryDashboard
               memories={memories}
               loading={memoriesLoading}
@@ -305,17 +334,17 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
           </div>
         </div>
 
-        {/* Messages - centered content */}
+        {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
-          <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
+          <div className="max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-3 sm:space-y-4">
             {!activeConvo || activeConvo.messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4 text-muted-foreground">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center neon-border">
-                  <Bot className="w-8 h-8 text-primary opacity-60" />
+              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4 text-muted-foreground px-4">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-primary/10 flex items-center justify-center neon-border">
+                  <Bot className="w-7 h-7 sm:w-8 sm:h-8 text-primary opacity-60" />
                 </div>
                 <div className="space-y-2">
-                  <p className="text-lg font-medium text-foreground">Como posso ajudar?</p>
-                  <p className="text-sm">Envie uma mensagem ou imagem para começar</p>
+                  <p className="text-base sm:text-lg font-medium text-foreground">Como posso ajudar?</p>
+                  <p className="text-xs sm:text-sm">Envie uma mensagem ou imagem para começar</p>
                 </div>
               </div>
             ) : (
@@ -337,7 +366,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
         </div>
 
         {/* Input */}
-        <div className="border-t border-border p-4">
+        <div className="border-t border-border p-2 sm:p-4">
           <div className="max-w-3xl mx-auto space-y-2">
             <ImagePreviewGrid images={images} onRemove={removeImage} />
             <div className="flex gap-2 items-end">
@@ -347,7 +376,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Digite sua mensagem..."
-                className="min-h-[44px] max-h-32 resize-none bg-secondary/50 border-border focus:neon-border"
+                className="min-h-[44px] max-h-32 resize-none bg-secondary/50 border-border focus:neon-border text-base sm:text-sm"
                 rows={1}
               />
               <Button
