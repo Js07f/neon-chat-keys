@@ -56,13 +56,29 @@
     @apply border-border;
   }
 
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
     @apply bg-background text-foreground font-sans;
     font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+  }
+
+  img, video, svg {
+    max-width: 100%;
+    height: auto;
   }
 
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
+  }
+
+  pre {
+    overflow-x: auto;
+    max-width: 100%;
   }
 }
 

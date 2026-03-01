@@ -283,7 +283,7 @@ export default function SettingsPanel({
           <Settings className="w-4 h-4" />
         </Button>
       </SheetTrigger>
-      <SheetContent className="bg-sidebar border-border w-80">
+      <SheetContent className="bg-sidebar border-border w-[85vw] sm:w-80 max-w-[320px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="text-primary neon-text">Configurações</SheetTitle>
         </SheetHeader>

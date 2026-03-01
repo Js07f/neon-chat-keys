@@ -13,7 +13,7 @@ export default function ModeSelector({ value, onChange, customModes }: ModeSelec
         <button
           key={key}
           onClick={() => onChange(key)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+          className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-medium transition-all min-h-[36px] sm:min-h-0 ${
             value === key
               ? "bg-primary text-primary-foreground neon-glow"
               : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80"
@@ -26,7 +26,7 @@ export default function ModeSelector({ value, onChange, customModes }: ModeSelec
         <button
           key={cm.id}
           onClick={() => onChange(cm.id)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+          className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-medium transition-all min-h-[36px] sm:min-h-0 ${
             value === cm.id
               ? "bg-primary text-primary-foreground neon-glow"
               : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80"
