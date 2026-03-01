@@ -59,12 +59,15 @@
   html {
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
+    height: -webkit-fill-available;
   }
 
   body {
     @apply bg-background text-foreground font-sans;
     font-family: 'Inter', sans-serif;
     overflow-x: hidden;
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
   }
 
   img, video, svg {
@@ -79,6 +82,12 @@
   pre {
     overflow-x: auto;
     max-width: 100%;
+  }
+}
+
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 
