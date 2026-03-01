@@ -29,12 +29,12 @@ export default function CodeBlock({ className, children, ...props }: CodeBlockPr
   const language = className?.replace("hljs language-", "")?.replace("language-", "") || "";
 
   return (
-    <div className="relative group my-2 rounded-lg overflow-hidden border border-border">
-      <div className="flex items-center justify-between bg-background/80 px-3 py-1.5 text-xs text-muted-foreground">
-        <span className="font-mono">{language || "code"}</span>
+    <div className="relative group my-2 rounded-lg overflow-hidden border border-border max-w-full">
+      <div className="flex items-center justify-between bg-background/80 px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs text-muted-foreground">
+        <span className="font-mono truncate">{language || "code"}</span>
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors shrink-0 ml-2"
         >
           {copied ? (
             <>
@@ -49,7 +49,7 @@ export default function CodeBlock({ className, children, ...props }: CodeBlockPr
           )}
         </button>
       </div>
-      <pre className="!mt-0 !rounded-t-none p-4 overflow-x-auto text-sm !bg-background/50">
+      <pre className="!mt-0 !rounded-t-none p-2 sm:p-4 overflow-x-auto text-xs sm:text-sm !bg-background/50 max-w-full">
         <code className={className} {...props}>
           {children}
         </code>

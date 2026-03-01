@@ -215,6 +215,19 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
     });
   };
 
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustTextareaHeight = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+  }, []);
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [input, adjustTextareaHeight]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -372,11 +385,12 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
             <div className="flex gap-2 items-end">
               <ImageUploader onFiles={addFiles} disabled={streaming} />
               <Textarea
+                ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Digite sua mensagem..."
-                className="min-h-[44px] max-h-32 resize-none bg-secondary/50 border-border focus:neon-border text-base sm:text-sm"
+                className="min-h-[44px] max-h-[200px] resize-none bg-secondary/50 border-border focus:neon-border text-base sm:text-sm overflow-y-auto transition-[height] duration-100 scrollbar-thin"
                 rows={1}
               />
               <Button
