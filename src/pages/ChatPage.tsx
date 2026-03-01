@@ -433,7 +433,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
 
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin overscroll-contain">
-          <div className="max-w-3xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-6 space-y-3 sm:space-y-4">
+          <div className="w-full max-w-full md:max-w-3xl md:mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-3 sm:space-y-4">
             {localMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4 text-muted-foreground px-4">
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-primary/10 flex items-center justify-center neon-border">
@@ -470,7 +470,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
 
         {/* Input */}
         <div className="sticky bottom-0 border-t border-border p-2 sm:p-4 bg-background/80 backdrop-blur-lg safe-bottom shrink-0">
-          <div className="max-w-3xl mx-auto w-full space-y-2">
+          <div className="w-full max-w-full md:max-w-3xl md:mx-auto space-y-2">
             <ImagePreviewGrid images={images} onRemove={removeImage} />
             <div className="flex gap-2 items-end">
               <ImageUploader onFiles={addFiles} disabled={streaming} />
