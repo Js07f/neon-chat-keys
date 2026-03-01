@@ -1,20 +1,27 @@
 import { useState } from "react";
-import { Settings, Plus, Trash2, Save, X } from "lucide-react";
+import { Settings, Plus, Trash2, Save, X, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import type { UserSettings, ResponseStyle, CustomMode } from "../types";
+import type { GlobalMemory, StyleProfile } from "../hooks/useGlobalMemory";
 
 interface SettingsPanelProps {
   settings: UserSettings | null;
   customModes: CustomMode[];
+  globalMemory: GlobalMemory;
   onUpdateSettings: (updates: Partial<Omit<UserSettings, "user_id">>) => void;
   onCreateMode: (name: string, instructions: string) => void;
   onUpdateMode: (id: string, name: string, instructions: string) => void;
   onDeleteMode: (id: string) => void;
+  onUpdateStyle: (updates: Partial<StyleProfile>) => void;
+  onAddGoal: (goal: string) => void;
+  onRemoveGoal: (goal: string) => void;
+  onResetMemory: () => void;
 }
 
 function PersonalityTab({ settings, onUpdate }: {
@@ -175,7 +182,100 @@ function ModesTab({ customModes, onCreate, onUpdate, onDelete }: {
   );
 }
 
-export default function SettingsPanel({ settings, customModes, onUpdateSettings, onCreateMode, onUpdateMode, onDeleteMode }: SettingsPanelProps) {
+function GlobalMemoryTab({ memory, onUpdateStyle, onAddGoal, onRemoveGoal, onReset }: {
+  memory: GlobalMemory;
+  onUpdateStyle: (u: Partial<StyleProfile>) => void;
+  onAddGoal: (g: string) => void;
+  onRemoveGoal: (g: string) => void;
+  onReset: () => void;
+}) {
+  const [newGoal, setNewGoal] = useState("");
+
+  const toneOptions: StyleProfile["tone"][] = ["casual", "strategic", "technical"];
+  const verbosityOptions: StyleProfile["verbosity"][] = ["low", "medium", "high"];
+  const structureOptions: StyleProfile["structure"][] = ["loose", "organized", "structured"];
+
+  const labels = {
+    casual: "Casual", strategic: "Estratégico", technical: "Técnico",
+    low: "Baixa", medium: "Média", high: "Alta",
+    loose: "Livre", organized: "Organizado", structured: "Estruturado",
+  };
+
+  const renderToggle = <T extends string>(label: string, options: T[], current: T, onChange: (v: T) => void) => (
+    <div>
+      <label className="text-xs text-muted-foreground mb-2 block">{label}</label>
+      <div className="flex gap-2">
+        {options.map((opt) => (
+          <button
+            key={opt}
+            onClick={() => onChange(opt)}
+            className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
+              current === opt
+                ? "bg-primary text-primary-foreground neon-glow"
+                : "bg-secondary text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {labels[opt as keyof typeof labels] || opt}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {renderToggle("Tom", toneOptions, memory.styleProfile.tone, (v) => onUpdateStyle({ tone: v }))}
+      {renderToggle("Verbosidade", verbosityOptions, memory.styleProfile.verbosity, (v) => onUpdateStyle({ verbosity: v }))}
+      {renderToggle("Estrutura", structureOptions, memory.styleProfile.structure, (v) => onUpdateStyle({ structure: v }))}
+
+      <div>
+        <label className="text-xs text-muted-foreground mb-1 block">Objetivos de Longo Prazo</label>
+        <div className="flex gap-2 mb-2">
+          <Input
+            value={newGoal}
+            onChange={(e) => setNewGoal(e.target.value)}
+            placeholder="Ex: Construir SaaS de IA"
+            className="bg-secondary/50 border-border text-sm"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && newGoal.trim()) {
+                onAddGoal(newGoal.trim());
+                setNewGoal("");
+              }
+            }}
+          />
+          <Button size="sm" disabled={!newGoal.trim()} onClick={() => { onAddGoal(newGoal.trim()); setNewGoal(""); }}>
+            <Plus className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+        {memory.longTermGoals.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {memory.longTermGoals.map((goal) => (
+              <Badge key={goal} variant="secondary" className="text-xs gap-1 pr-1">
+                <Target className="w-3 h-3" />
+                {goal}
+                <button onClick={() => onRemoveGoal(goal)} className="ml-1 hover:text-destructive">
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">Nenhum objetivo definido.</p>
+        )}
+      </div>
+
+      <Button size="sm" variant="outline" className="w-full text-xs" onClick={onReset}>
+        Resetar Memória Global
+      </Button>
+    </div>
+  );
+}
+
+export default function SettingsPanel({
+  settings, customModes, globalMemory,
+  onUpdateSettings, onCreateMode, onUpdateMode, onDeleteMode,
+  onUpdateStyle, onAddGoal, onRemoveGoal, onResetMemory,
+}: SettingsPanelProps) {
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -190,10 +290,20 @@ export default function SettingsPanel({ settings, customModes, onUpdateSettings,
         <Tabs defaultValue="personality" className="mt-4">
           <TabsList className="w-full bg-secondary">
             <TabsTrigger value="personality" className="flex-1 text-xs">Personalidade</TabsTrigger>
+            <TabsTrigger value="memory" className="flex-1 text-xs">Memória</TabsTrigger>
             <TabsTrigger value="modes" className="flex-1 text-xs">Modos</TabsTrigger>
           </TabsList>
           <TabsContent value="personality" className="mt-3">
             <PersonalityTab settings={settings} onUpdate={onUpdateSettings} />
+          </TabsContent>
+          <TabsContent value="memory" className="mt-3">
+            <GlobalMemoryTab
+              memory={globalMemory}
+              onUpdateStyle={onUpdateStyle}
+              onAddGoal={onAddGoal}
+              onRemoveGoal={onRemoveGoal}
+              onReset={onResetMemory}
+            />
           </TabsContent>
           <TabsContent value="modes" className="mt-3">
             <ModesTab customModes={customModes} onCreate={onCreateMode} onUpdate={onUpdateMode} onDelete={onDeleteMode} />

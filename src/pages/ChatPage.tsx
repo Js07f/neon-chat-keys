@@ -45,7 +45,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
   const { settings, update: updateSettings } = useUserSettings(user.id);
   const { modes: customModes, create: createMode, update: updateMode, remove: deleteMode } = useCustomModes(user.id);
   const { memories, loading: memoriesLoading, updateMemory, deleteMemory, clearAll: clearMemories, extractMemories } = useMemory(user.id);
-  const { memory: globalMemory } = useGlobalMemory();
+  const { memory: globalMemory, updateStyle, addGoal, removeGoal, reset } = useGlobalMemory();
 
   const activeConvo = conversations.find((c) => c.id === activeId) || null;
 
@@ -292,10 +292,15 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
             <SettingsPanel
               settings={settings}
               customModes={customModes}
+              globalMemory={globalMemory}
               onUpdateSettings={updateSettings}
               onCreateMode={createMode}
               onUpdateMode={updateMode}
               onDeleteMode={deleteMode}
+              onUpdateStyle={updateStyle}
+              onAddGoal={addGoal}
+              onRemoveGoal={removeGoal}
+              onResetMemory={reset}
             />
           </div>
         </div>
