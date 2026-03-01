@@ -2,20 +2,23 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Send, Loader2, Bot, PanelLeftClose, PanelLeft, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { storage, type Conversation, type ChatMessage } from "@/lib/storage";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { useImageUpload } from "@/modules/chat/hooks/useImageUpload";
-import { useChatStream } from "@/modules/chat/hooks/useChatStream";
+import { useChatStream, type ToolEvent } from "@/modules/chat/hooks/useChatStream";
 import { useUserSettings } from "@/modules/chat/hooks/useUserSettings";
 import { useCustomModes } from "@/modules/chat/hooks/useCustomModes";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useWorkspaces } from "@/modules/workspaces/hooks/useWorkspaces";
+import { usePersistedConversations } from "@/modules/workspaces/hooks/usePersistedConversations";
 import ImageUploader from "@/modules/chat/components/ImageUploader";
 import ImagePreviewGrid from "@/modules/chat/components/ImagePreviewGrid";
 import MessageBubble from "@/modules/chat/components/MessageBubble";
 import ModeSelector from "@/modules/chat/components/ModeSelector";
 import SettingsPanel from "@/modules/chat/components/SettingsPanel";
 import ChatSidebar from "@/modules/chat/components/ChatSidebar";
+import WorkspaceSelector from "@/modules/workspaces/components/WorkspaceSelector";
+import ToolIndicator from "@/modules/tools/components/ToolIndicator";
 import { DEFAULT_MODES, type ChatMode } from "@/modules/chat/types";
 import { useMemory } from "@/modules/chat/hooks/useMemory";
 import { useGlobalMemory, shouldInjectMemory, buildMemoryPrompt } from "@/modules/chat/hooks/useGlobalMemory";
@@ -27,16 +30,41 @@ interface ChatPageProps {
   onLogout: () => void;
 }
 
+interface LocalMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+  images?: string[];
+}
+
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
 export default function ChatPage({ user, onLogout }: ChatPageProps) {
-  const [conversations, setConversations] = useState<Conversation[]>(storage.getConversations());
-  const [activeId, setActiveId] = useState<string | null>(conversations[0]?.id || null);
+  // Workspaces
+  const { workspaces, activeWorkspaceId, setActiveWorkspaceId, createWorkspace, renameWorkspace, deleteWorkspace } =
+    useWorkspaces(user.id);
+
+  // Persisted conversations from DB
+  const {
+    conversations: dbConversations,
+    createConversation: dbCreateConversation,
+    updateConversation: dbUpdateConversation,
+    deleteConversation: dbDeleteConversation,
+    saveMessage: dbSaveMessage,
+    getMessages: dbGetMessages,
+    refreshConversations,
+  } = usePersistedConversations(user.id, activeWorkspaceId);
+
+  // Local message state for active conversation
+  const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [streamPhase, setStreamPhase] = useState<"analyzing" | "generating" | "streaming" | null>(null);
+  const [streamPhase, setStreamPhase] = useState<"analyzing" | "generating" | "streaming" | "tool_calling" | null>(null);
+  const [toolEvents, setToolEvents] = useState<ToolEvent[]>([]);
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -51,21 +79,34 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
   const { memories, loading: memoriesLoading, updateMemory, deleteMemory, clearAll: clearMemories, extractMemories } = useMemory(user.id);
   const { memory: globalMemory, updateStyle, addGoal, removeGoal, reset } = useGlobalMemory();
 
-  const activeConvo = conversations.find((c) => c.id === activeId) || null;
-
   useEffect(() => {
     if (settings?.default_mode) setCurrentMode(settings.default_mode);
   }, [settings?.default_mode]);
 
+  // Load messages when active conversation changes
   useEffect(() => {
-    storage.saveConversations(conversations);
-  }, [conversations]);
+    if (!activeId) {
+      setLocalMessages([]);
+      return;
+    }
+    dbGetMessages(activeId).then((msgs) => {
+      setLocalMessages(
+        msgs.map((m) => ({
+          id: m.id,
+          role: m.role as "user" | "assistant",
+          content: m.content,
+          timestamp: m.created_at,
+          images: m.images?.length > 0 ? m.images : undefined,
+        }))
+      );
+    });
+  }, [activeId, dbGetMessages]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
     }
-  }, [activeConvo?.messages]);
+  }, [localMessages]);
 
   useEffect(() => {
     const handler = (e: ClipboardEvent) => addFromClipboard(e);
@@ -73,29 +114,40 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
     return () => document.removeEventListener("paste", handler);
   }, [addFromClipboard]);
 
-  const createConversation = useCallback(() => {
-    const newConvo: Conversation = {
-      id: generateId(),
-      title: "Nova conversa",
-      messages: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setConversations((prev) => [newConvo, ...prev]);
-    setActiveId(newConvo.id);
-    setInput("");
-  }, []);
+  // Set first conversation as active when workspace loads
+  useEffect(() => {
+    if (dbConversations.length > 0 && !activeId) {
+      setActiveId(dbConversations[0].id);
+    }
+  }, [dbConversations, activeId]);
 
-  const deleteConversation = useCallback((id: string) => {
-    setConversations((prev) => prev.filter((c) => c.id !== id));
-    setActiveId((current) => (current === id ? null : current));
-  }, []);
+  // Reset activeId when workspace changes
+  useEffect(() => {
+    setActiveId(null);
+    setLocalMessages([]);
+  }, [activeWorkspaceId]);
 
-  const togglePin = useCallback((id: string) => {
-    setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c))
-    );
-  }, []);
+  const createConversation = useCallback(async () => {
+    const id = await dbCreateConversation("Nova conversa");
+    if (id) {
+      setActiveId(id);
+      setLocalMessages([]);
+      setInput("");
+    }
+  }, [dbCreateConversation]);
+
+  const deleteConversation = useCallback(async (id: string) => {
+    await dbDeleteConversation(id);
+    if (activeId === id) {
+      setActiveId(null);
+      setLocalMessages([]);
+    }
+  }, [dbDeleteConversation, activeId]);
+
+  const togglePin = useCallback(async (id: string) => {
+    const conv = dbConversations.find((c) => c.id === id);
+    if (conv) await dbUpdateConversation(id, { pinned: !conv.pinned });
+  }, [dbConversations, dbUpdateConversation]);
 
   const getResolvedMode = (): string | undefined => {
     if (currentMode === "default") return undefined;
@@ -112,21 +164,18 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
 
     const imageUrls = getImageUrls();
     let currentId = activeId;
-    let updatedConversations = [...conversations];
 
+    // Create conversation if none active
     if (!currentId) {
-      const newConvo: Conversation = {
-        id: generateId(),
-        title: input.trim().slice(0, 40) || "Imagem",
-        messages: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      updatedConversations = [newConvo, ...updatedConversations];
-      currentId = newConvo.id;
+      const title = input.trim().slice(0, 40) || "Imagem";
+      currentId = await dbCreateConversation(title);
+      if (!currentId) return;
+      setActiveId(currentId);
+    } else if (localMessages.length === 0) {
+      await dbUpdateConversation(currentId, { title: input.trim().slice(0, 40) || "Imagem" });
     }
 
-    const userMsg: ChatMessage = {
+    const userMsg: LocalMessage = {
       id: generateId(),
       role: "user",
       content: input.trim(),
@@ -134,37 +183,41 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
       images: imageUrls.length > 0 ? imageUrls : undefined,
     };
 
-    const assistantMsg: ChatMessage = {
+    const assistantMsg: LocalMessage = {
       id: generateId(),
       role: "assistant",
       content: "",
       timestamp: new Date().toISOString(),
     };
 
-    updatedConversations = updatedConversations.map((c) => {
-      if (c.id !== currentId) return c;
-      const isFirst = c.messages.length === 0;
-      return {
-        ...c,
-        title: isFirst ? (input.trim().slice(0, 40) || "Imagem") : c.title,
-        messages: [...c.messages, userMsg, assistantMsg],
-        updatedAt: new Date().toISOString(),
-      };
-    });
+    // Save user message to DB
+    if (activeWorkspaceId) {
+      dbSaveMessage({
+        user_id: user.id,
+        workspace_id: activeWorkspaceId,
+        conversation_id: currentId,
+        role: "user",
+        content: userMsg.content,
+        images: imageUrls,
+        tool_calls: null,
+        tool_results: null,
+      });
+    }
 
-    setConversations(updatedConversations);
-    setActiveId(currentId);
+    const updatedMessages = [...localMessages, userMsg, assistantMsg];
+    setLocalMessages(updatedMessages);
     setInput("");
     clearImages();
     setStreaming(true);
+    setToolEvents([]);
 
-    const convo = updatedConversations.find((c) => c.id === currentId)!;
-    const messagesForApi = convo.messages.slice(0, -1);
-
+    const messagesForApi = updatedMessages.slice(0, -1);
     let fullContent = "";
 
     const userText = input.trim();
     const memoryPrompt = shouldInjectMemory(userText) ? buildMemoryPrompt(globalMemory) : undefined;
+
+    const finalConvoId = currentId;
 
     await stream({
       messages: messagesForApi.map((m) => ({
@@ -175,40 +228,54 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
       mode: getResolvedMode(),
       customModeId: getCustomModeId(),
       globalMemoryPrompt: memoryPrompt,
+      workspaceId: activeWorkspaceId || undefined,
+      enableTools: true,
       accessToken: (await (await import("@/integrations/supabase/client")).supabase.auth.getSession()).data.session?.access_token,
       onPhase: setStreamPhase,
+      onToolEvent: (event) => {
+        setToolEvents((prev) => [...prev, event]);
+      },
       onDelta: (text) => {
         fullContent += text;
-        setConversations((prev) =>
-          prev.map((c) => {
-            if (c.id !== currentId) return c;
-            const msgs = [...c.messages];
-            msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: fullContent };
-            return { ...c, messages: msgs };
-          })
-        );
+        setLocalMessages((prev) => {
+          const msgs = [...prev];
+          msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: fullContent };
+          return msgs;
+        });
       },
       onDone: () => {
         setStreaming(false);
         setStreamPhase(null);
-        const finalConvo = conversations.find((c) => c.id === currentId);
-        if (finalConvo && finalConvo.messages.length >= 2) {
-          const lastMsgs = finalConvo.messages.slice(-6).map((m) => ({
-            role: m.role,
-            content: m.content,
-          }));
+
+        // Save assistant message to DB
+        if (activeWorkspaceId && finalConvoId) {
+          dbSaveMessage({
+            user_id: user.id,
+            workspace_id: activeWorkspaceId,
+            conversation_id: finalConvoId,
+            role: "assistant",
+            content: fullContent,
+            images: [],
+            tool_calls: null,
+            tool_results: null,
+          });
+          dbUpdateConversation(finalConvoId, {});
+        }
+
+        // Extract memories
+        if (localMessages.length >= 2) {
+          const lastMsgs = [...localMessages.slice(-5), { role: "user" as const, content: userText }, { role: "assistant" as const, content: fullContent }]
+            .slice(-6)
+            .map((m) => ({ role: m.role, content: m.content }));
           extractMemories(lastMsgs);
         }
       },
       onError: (error) => {
-        setConversations((prev) =>
-          prev.map((c) => {
-            if (c.id !== currentId) return c;
-            const msgs = [...c.messages];
-            msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: `❌ Erro: ${error}` };
-            return { ...c, messages: msgs };
-          })
-        );
+        setLocalMessages((prev) => {
+          const msgs = [...prev];
+          msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], content: `❌ Erro: ${error}` };
+          return msgs;
+        });
         setStreaming(false);
         setStreamPhase(null);
       },
@@ -244,7 +311,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
   );
 
   const exportHistory = () => {
-    const json = storage.exportJSON();
+    const json = JSON.stringify(dbConversations, null, 2);
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -255,16 +322,28 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
     toast({ title: "Histórico exportado!" });
   };
 
-  const clearHistory = () => {
-    storage.clearAll();
-    setConversations([]);
+  const clearHistory = async () => {
+    for (const c of dbConversations) {
+      await dbDeleteConversation(c.id);
+    }
     setActiveId(null);
+    setLocalMessages([]);
     toast({ title: "Histórico limpo" });
   };
 
+  // Adapt persisted conversations to sidebar format
+  const sidebarConversations = dbConversations.map((c) => ({
+    id: c.id,
+    title: c.title,
+    messages: [] as any[],
+    pinned: c.pinned,
+    createdAt: c.created_at,
+    updatedAt: c.updated_at,
+  }));
+
   const sidebarContent = (
     <ChatSidebar
-      conversations={conversations}
+      conversations={sidebarConversations}
       activeId={activeId}
       onSelect={(id) => {
         setActiveId(id);
@@ -284,7 +363,6 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
 
   return (
     <div className="flex h-[100dvh] overflow-hidden bg-background">
-      {/* Mobile Sidebar as Sheet */}
       {isMobile ? (
         <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
           <SheetContent side="left" className="w-[280px] p-0 bg-sidebar border-border">
@@ -292,17 +370,13 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
           </SheetContent>
         </Sheet>
       ) : (
-        /* Desktop Sidebar */
         <div
-          className={`${
-            sidebarOpen ? "w-72" : "w-0"
-          } transition-all duration-300 overflow-hidden border-r border-border bg-sidebar shrink-0`}
+          className={`${sidebarOpen ? "w-72" : "w-0"} transition-all duration-300 overflow-hidden border-r border-border bg-sidebar shrink-0`}
         >
           {sidebarContent}
         </div>
       )}
 
-      {/* Main area */}
       <div
         ref={dropRef}
         className="flex-1 flex flex-col min-w-0"
@@ -320,6 +394,16 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
               {sidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
             </Button>
           )}
+
+          <WorkspaceSelector
+            workspaces={workspaces}
+            activeId={activeWorkspaceId}
+            onSelect={setActiveWorkspaceId}
+            onCreate={(name) => createWorkspace(name)}
+            onRename={renameWorkspace}
+            onDelete={deleteWorkspace}
+          />
+
           <div className="flex-1 min-w-0 overflow-x-auto scrollbar-thin">
             <ModeSelector value={currentMode} onChange={setCurrentMode} customModes={customModes} />
           </div>
@@ -350,7 +434,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
           <div className="max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-3 sm:space-y-4">
-            {!activeConvo || activeConvo.messages.length === 0 ? (
+            {localMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4 text-muted-foreground px-4">
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-primary/10 flex items-center justify-center neon-border">
                   <Bot className="w-7 h-7 sm:w-8 sm:h-8 text-primary opacity-60" />
@@ -361,19 +445,25 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
                 </div>
               </div>
             ) : (
-              activeConvo.messages.map((msg, idx) => (
-                <div
-                  key={msg.id}
-                  className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300"
-                  style={{ animationDelay: `${Math.min(idx * 30, 150)}ms` }}
-                >
-                  <MessageBubble
-                    message={msg}
-                    streamPhase={streamPhase}
-                    isLast={idx === activeConvo.messages.length - 1}
-                  />
-                </div>
-              ))
+              localMessages.map((msg, idx) => {
+                const isLast = idx === localMessages.length - 1;
+                return (
+                  <div
+                    key={msg.id}
+                    className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300"
+                    style={{ animationDelay: `${Math.min(idx * 30, 150)}ms` }}
+                  >
+                    {isLast && msg.role === "assistant" && toolEvents.length > 0 && (
+                      <ToolIndicator events={toolEvents} />
+                    )}
+                    <MessageBubble
+                      message={msg}
+                      streamPhase={streamPhase}
+                      isLast={isLast}
+                    />
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
@@ -399,11 +489,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
                 size="icon"
                 className="h-11 w-11 shrink-0 neon-glow"
               >
-                {streaming ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
+                {streaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>
             </div>
           </div>
