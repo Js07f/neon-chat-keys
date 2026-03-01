@@ -8,14 +8,24 @@ interface StreamMessage {
   images?: string[];
 }
 
+export interface ToolEvent {
+  type: "tool_start" | "tool_end";
+  tool: string;
+  input?: Record<string, any>;
+  output?: string;
+}
+
 interface StreamOptions {
   messages: StreamMessage[];
   mode?: string;
   customModeId?: string;
   globalMemoryPrompt?: string;
+  workspaceId?: string;
+  enableTools?: boolean;
   accessToken?: string;
   onDelta: (text: string) => void;
-  onPhase: (phase: "analyzing" | "generating" | "streaming") => void;
+  onPhase: (phase: "analyzing" | "generating" | "streaming" | "tool_calling") => void;
+  onToolEvent?: (event: ToolEvent) => void;
   onDone: () => void;
   onError: (error: string) => void;
   signal?: AbortSignal;
@@ -59,6 +69,8 @@ export function useChatStream() {
           mode: opts.mode,
           custom_mode_id: opts.customModeId,
           global_memory_prompt: opts.globalMemoryPrompt,
+          workspace_id: opts.workspaceId,
+          enable_tools: opts.enableTools !== false,
         }),
         signal: controller.signal,
       });
@@ -70,11 +82,10 @@ export function useChatStream() {
 
       if (!resp.body) throw new Error("Sem corpo na resposta");
 
-      opts.onPhase("streaming");
-
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let textBuffer = "";
+      let receivedContent = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -95,8 +106,25 @@ export function useChatStream() {
 
           try {
             const parsed = JSON.parse(jsonStr);
+
+            // Handle tool events
+            if (parsed.type === "tool_start" || parsed.type === "tool_end") {
+              if (parsed.type === "tool_start") {
+                opts.onPhase("tool_calling");
+              }
+              opts.onToolEvent?.(parsed as ToolEvent);
+              continue;
+            }
+
+            // Handle regular SSE content
             const content = parsed.choices?.[0]?.delta?.content;
-            if (content) opts.onDelta(content);
+            if (content) {
+              if (!receivedContent) {
+                opts.onPhase("streaming");
+                receivedContent = true;
+              }
+              opts.onDelta(content);
+            }
           } catch {
             textBuffer = line + "\n" + textBuffer;
             break;

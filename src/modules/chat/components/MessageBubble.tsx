@@ -8,7 +8,7 @@ import CodeBlock from "./CodeBlock";
 
 interface MessageBubbleProps {
   message: ChatMessage;
-  streamPhase?: "analyzing" | "generating" | "streaming" | null;
+  streamPhase?: "analyzing" | "generating" | "streaming" | "tool_calling" | null;
   isLast?: boolean;
 }
 
@@ -50,6 +50,7 @@ function StreamingIndicator({ phase }: { phase: string }) {
     analyzing: "Analisando imagens...",
     generating: "Gerando resposta...",
     streaming: "",
+    tool_calling: "Executando ferramentas...",
   };
   const label = labels[phase];
   if (!label) return null;

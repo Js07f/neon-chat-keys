@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          pinned: boolean
+          title: string
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          pinned?: boolean
+          title?: string
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pinned?: boolean
+          title?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custom_modes: {
         Row: {
           created_at: string
@@ -59,6 +97,125 @@ export type Database = {
           id?: string
           key?: string
           status?: string
+        }
+        Relationships: []
+      }
+      long_term_memory: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          embedding: Json | null
+          id: string
+          relevance_score: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          content: string
+          created_at?: string
+          embedding?: Json | null
+          id?: string
+          relevance_score?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          embedding?: Json | null
+          id?: string
+          relevance_score?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          embedding: Json | null
+          id: string
+          images: string[] | null
+          role: string
+          tool_calls: Json | null
+          tool_results: Json | null
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          content?: string
+          conversation_id: string
+          created_at?: string
+          embedding?: Json | null
+          id?: string
+          images?: string[] | null
+          role: string
+          tool_calls?: Json | null
+          tool_results?: Json | null
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          embedding?: Json | null
+          id?: string
+          images?: string[] | null
+          role?: string
+          tool_calls?: Json | null
+          tool_results?: Json | null
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tool_logs: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          duration_ms: number | null
+          id: string
+          input: Json | null
+          output: Json | null
+          tool_name: string
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          input?: Json | null
+          output?: Json | null
+          tool_name: string
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          input?: Json | null
+          output?: Json | null
+          tool_name?: string
+          user_id?: string
+          workspace_id?: string | null
         }
         Relationships: []
       }
@@ -139,6 +296,27 @@ export type Database = {
           response_style?: string
           temperature_preference?: number
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      workspaces: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
           user_id?: string
         }
         Relationships: []
