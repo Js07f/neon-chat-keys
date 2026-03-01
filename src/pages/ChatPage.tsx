@@ -362,7 +362,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
   );
 
   return (
-    <div className="flex h-[100dvh] overflow-hidden bg-background">
+    <div className="flex flex-col min-h-[100dvh] h-[100dvh] overflow-hidden bg-background sm:flex-row">
       {isMobile ? (
         <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
           <SheetContent side="left" className="w-[280px] p-0 bg-sidebar border-border">
@@ -384,9 +384,9 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
         onDrop={handleDrop}
       >
         {/* Header */}
-        <div className="h-auto min-h-[48px] border-b border-border flex items-center px-3 sm:px-4 gap-2 sm:gap-3 py-2 shrink-0">
+        <div className="min-h-[52px] border-b border-border flex items-center px-3 gap-2 py-2 shrink-0">
           {isMobile ? (
-            <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => setMobileSidebarOpen(true)}>
+            <Button variant="ghost" size="icon" className="min-h-12 min-w-12" onClick={() => setMobileSidebarOpen(true)}>
               <Menu className="w-5 h-5" />
             </Button>
           ) : (
@@ -432,8 +432,8 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
-          <div className="max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-3 sm:space-y-4">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin overscroll-contain">
+          <div className="max-w-3xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-6 space-y-3 sm:space-y-4">
             {localMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4 text-muted-foreground px-4">
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-primary/10 flex items-center justify-center neon-border">
@@ -469,8 +469,8 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
         </div>
 
         {/* Input */}
-        <div className="border-t border-border p-2 sm:p-4">
-          <div className="max-w-3xl mx-auto space-y-2">
+        <div className="sticky bottom-0 border-t border-border p-2 sm:p-4 bg-background/80 backdrop-blur-lg safe-bottom shrink-0">
+          <div className="max-w-3xl mx-auto w-full space-y-2">
             <ImagePreviewGrid images={images} onRemove={removeImage} />
             <div className="flex gap-2 items-end">
               <ImageUploader onFiles={addFiles} disabled={streaming} />
@@ -480,16 +480,16 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Digite sua mensagem..."
-                className="min-h-[44px] max-h-[200px] resize-none bg-secondary/50 border-border focus:neon-border text-base sm:text-sm overflow-y-auto transition-[height] duration-100 scrollbar-thin"
+                className="min-h-[44px] max-h-[200px] resize-none bg-secondary/50 border-border focus:neon-border text-base overflow-y-auto transition-[height] duration-100 scrollbar-thin"
                 rows={1}
               />
               <Button
                 onClick={sendMessage}
                 disabled={(!input.trim() && images.length === 0) || streaming || isUploading}
                 size="icon"
-                className="h-11 w-11 shrink-0 neon-glow"
+                className="min-h-12 min-w-12 shrink-0 neon-glow"
               >
-                {streaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {streaming ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
               </Button>
             </div>
           </div>

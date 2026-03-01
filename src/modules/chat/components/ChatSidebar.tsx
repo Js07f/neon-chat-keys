@@ -53,7 +53,7 @@ export default function ChatSidebar({
   const renderItem = (c: Conversation) => (
     <div
       key={c.id}
-      className={`group flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer text-sm transition-all duration-200 ${
+      className={`group flex items-center gap-2 px-3 py-3 rounded-lg cursor-pointer text-base sm:text-sm min-h-[44px] transition-all duration-200 ${
         c.id === activeId
           ? "bg-primary/15 text-primary neon-border shadow-sm"
           : "text-sidebar-foreground hover:bg-sidebar-accent/80"
@@ -129,17 +129,17 @@ export default function ChatSidebar({
         </div>
       </ScrollArea>
 
-      <div className="p-3 border-t border-border space-y-1">
-        <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={onExport}>
-          <Download className="w-3.5 h-3.5 mr-2" />
+      <div className="p-3 border-t border-border space-y-1 safe-bottom">
+        <Button variant="ghost" size="sm" className="w-full justify-start text-sm min-h-[44px]" onClick={onExport}>
+          <Download className="w-4 h-4 mr-2" />
           Exportar JSON
         </Button>
-        <Button variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={onClearAll}>
-          <Trash2 className="w-3.5 h-3.5 mr-2" />
+        <Button variant="ghost" size="sm" className="w-full justify-start text-sm min-h-[44px]" onClick={onClearAll}>
+          <Trash2 className="w-4 h-4 mr-2" />
           Limpar histórico
         </Button>
-        <Button variant="ghost" size="sm" className="w-full justify-start text-xs text-destructive" onClick={onLogout}>
-          <LogOut className="w-3.5 h-3.5 mr-2" />
+        <Button variant="ghost" size="sm" className="w-full justify-start text-sm min-h-[44px] text-destructive" onClick={onLogout}>
+          <LogOut className="w-4 h-4 mr-2" />
           Sair
         </Button>
       </div>
