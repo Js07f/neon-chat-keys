@@ -45,20 +45,20 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center px-5 py-8 sm:p-6">
-      <div className="w-[90%] max-w-md space-y-6 sm:space-y-8">
+    <div className="flex min-h-[100dvh] items-center justify-center px-4 py-6 sm:px-6 sm:py-8 overflow-x-hidden">
+      <div className="w-[90%] max-w-[375px] space-y-5 sm:space-y-6">
         <div className="text-center space-y-2">
-          <div className="mx-auto w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-primary/20 flex items-center justify-center neon-border">
-            <KeyRound className="w-7 h-7 sm:w-8 sm:h-8 text-primary neon-text" />
+          <div className="mx-auto w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-primary/20 flex items-center justify-center neon-border">
+            <KeyRound className="w-6 h-6 sm:w-7 sm:h-7 text-primary neon-text" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight neon-text">NeonChat</h1>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight neon-text">NeonChat</h1>
           <p className="text-sm sm:text-base text-muted-foreground">
             {isSignUp ? "Crie sua conta para começar" : "Entre para acessar o chat"}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+          <div className="space-y-2.5 sm:space-y-3">
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -66,7 +66,7 @@ export default function AuthPage() {
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-12 pl-10 text-base bg-secondary/50 border-border focus:neon-border"
+                className="h-12 pl-10 text-base bg-secondary/50 border-border focus:neon-border rounded-xl"
                 autoFocus
               />
             </div>
@@ -77,7 +77,7 @@ export default function AuthPage() {
                 placeholder="Senha"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-12 pl-10 text-base bg-secondary/50 border-border focus:neon-border"
+                className="h-12 pl-10 text-base bg-secondary/50 border-border focus:neon-border rounded-xl"
                 minLength={6}
               />
             </div>
@@ -100,7 +100,7 @@ export default function AuthPage() {
           <Button
             type="submit"
             disabled={loading || !email.trim() || !password.trim()}
-            className="w-full h-12 text-base neon-glow font-semibold rounded-xl"
+            className="w-[90%] mx-auto flex h-12 text-sm sm:text-base neon-glow font-semibold rounded-xl"
           >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -125,7 +125,7 @@ export default function AuthPage() {
         <Button
           type="button"
           variant="outline"
-          className="w-full h-12 text-base rounded-xl"
+          className="w-[90%] mx-auto flex h-12 text-sm sm:text-base rounded-xl"
           onClick={async () => {
             setError("");
             const { error } = await lovable.auth.signInWithOAuth("google", {
@@ -143,7 +143,7 @@ export default function AuthPage() {
           Entrar com Google
         </Button>
 
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-xs sm:text-sm text-muted-foreground">
           {isSignUp ? "Já tem uma conta?" : "Não tem uma conta?"}{" "}
           <button
             onClick={() => { setIsSignUp(!isSignUp); setError(""); setSuccess(""); }}
