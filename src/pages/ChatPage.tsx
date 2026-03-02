@@ -384,30 +384,32 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
         onDrop={handleDrop}
       >
         {/* Header */}
-        <div className="min-h-[52px] border-b border-border flex items-center px-3 gap-2 py-2 shrink-0">
+        <div className="min-h-[48px] border-b border-border flex items-center px-2 sm:px-3 gap-1 sm:gap-2 py-1.5 sm:py-2 shrink-0">
           {isMobile ? (
-            <Button variant="ghost" size="icon" className="min-h-12 min-w-12" onClick={() => setMobileSidebarOpen(true)}>
+            <Button variant="ghost" size="icon" className="min-h-10 min-w-10 shrink-0" onClick={() => setMobileSidebarOpen(true)}>
               <Menu className="w-5 h-5" />
             </Button>
           ) : (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSidebarOpen(!sidebarOpen)}>
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setSidebarOpen(!sidebarOpen)}>
               {sidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
             </Button>
           )}
 
-          <WorkspaceSelector
-            workspaces={workspaces}
-            activeId={activeWorkspaceId}
-            onSelect={setActiveWorkspaceId}
-            onCreate={(name) => createWorkspace(name)}
-            onRename={renameWorkspace}
-            onDelete={deleteWorkspace}
-          />
+          <div className="shrink-0">
+            <WorkspaceSelector
+              workspaces={workspaces}
+              activeId={activeWorkspaceId}
+              onSelect={setActiveWorkspaceId}
+              onCreate={(name) => createWorkspace(name)}
+              onRename={renameWorkspace}
+              onDelete={deleteWorkspace}
+            />
+          </div>
 
           <div className="flex-1 min-w-0 overflow-x-auto scrollbar-thin">
             <ModeSelector value={currentMode} onChange={setCurrentMode} customModes={customModes} />
           </div>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
             <MemoryDashboard
               memories={memories}
               loading={memoriesLoading}

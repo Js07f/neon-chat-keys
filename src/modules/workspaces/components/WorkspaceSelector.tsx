@@ -53,7 +53,7 @@ export default function WorkspaceSelector({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2 max-w-[180px] truncate text-xs h-8">
+        <Button variant="ghost" size="sm" className="gap-1.5 max-w-[120px] sm:max-w-[180px] truncate text-[11px] sm:text-xs h-8 px-2 sm:px-3">
           <Briefcase className="w-3.5 h-3.5 shrink-0 text-primary" />
           <span className="truncate">{active?.name || "Workspace"}</span>
         </Button>
