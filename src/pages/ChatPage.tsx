@@ -23,6 +23,8 @@ import { DEFAULT_MODES, type ChatMode } from "@/modules/chat/types";
 import { useMemory } from "@/modules/chat/hooks/useMemory";
 import { useGlobalMemory, shouldInjectMemory, buildMemoryPrompt } from "@/modules/chat/hooks/useGlobalMemory";
 import MemoryDashboard from "@/modules/chat/components/MemoryDashboard";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import PullToRefreshIndicator from "@/modules/chat/components/PullToRefreshIndicator";
 import type { User } from "@supabase/supabase-js";
 
 interface ChatPageProps {
@@ -70,6 +72,24 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [currentMode, setCurrentMode] = useState<ChatMode>("default");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handlePullRefresh = useCallback(async () => {
+    if (!activeId) return;
+    const msgs = await dbGetMessages(activeId);
+    setLocalMessages(
+      msgs.map((m) => ({
+        id: m.id,
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        timestamp: m.created_at,
+        images: m.images?.length > 0 ? m.images : undefined,
+      }))
+    );
+  }, [activeId, dbGetMessages]);
+
+  const { containerRef: pullRef, pullDistance, refreshing: pullRefreshing, triggered: pullTriggered } = usePullToRefresh({
+    onRefresh: handlePullRefresh,
+  });
   const dropRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { images, addFiles, addFromClipboard, removeImage, clearImages, getImageUrls, isUploading } = useImageUpload();
@@ -439,7 +459,14 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-thin overscroll-contain [-webkit-overflow-scrolling:touch] touch-pan-y">
+        <div
+          ref={(el) => {
+            (scrollRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+            (pullRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+          }}
+          className="flex-1 min-h-0 overflow-y-auto scrollbar-thin overscroll-contain [-webkit-overflow-scrolling:touch] touch-pan-y"
+        >
+          <PullToRefreshIndicator pullDistance={pullDistance} refreshing={pullRefreshing} triggered={pullTriggered} />
           <div className="w-full max-w-full md:max-w-3xl md:mx-auto px-4 py-2 sm:py-6 space-y-3 sm:space-y-4">
             {localMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4 text-muted-foreground px-4">
