@@ -25,6 +25,11 @@ import { useGlobalMemory, shouldInjectMemory, buildMemoryPrompt } from "@/module
 import MemoryDashboard from "@/modules/chat/components/MemoryDashboard";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import PullToRefreshIndicator from "@/modules/chat/components/PullToRefreshIndicator";
+import { useSpeechRecognition } from "@/modules/copilot/hooks/useSpeechRecognition";
+import { useScreenCapture } from "@/modules/copilot/hooks/useScreenCapture";
+import CopilotToolbar from "@/modules/copilot/components/CopilotToolbar";
+import CopilotOverlay, { type OverlayInsight } from "@/modules/copilot/components/CopilotOverlay";
+import VoiceIndicator from "@/modules/copilot/components/VoiceIndicator";
 import type { User } from "@supabase/supabase-js";
 
 interface ChatPageProps {
@@ -98,6 +103,44 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
   const { modes: customModes, create: createMode, update: updateMode, remove: deleteMode } = useCustomModes(user.id);
   const { memories, loading: memoriesLoading, updateMemory, deleteMemory, clearAll: clearMemories, extractMemories } = useMemory(user.id);
   const { memory: globalMemory, updateStyle, addGoal, removeGoal, reset } = useGlobalMemory();
+
+  // Copilot multimodal
+  const speech = useSpeechRecognition();
+  const screen = useScreenCapture();
+  const [overlayVisible, setOverlayVisible] = useState(false);
+  const [overlayInsights, setOverlayInsights] = useState<OverlayInsight[]>([]);
+
+  // Append voice transcript to input
+  useEffect(() => {
+    if (speech.transcript) {
+      setInput((prev) => {
+        const trimmed = prev.trimEnd();
+        return trimmed ? trimmed + " " + speech.transcript.trim() : speech.transcript.trim();
+      });
+      speech.resetTranscript();
+    }
+  }, [speech.transcript, speech.resetTranscript]);
+
+  const handleCaptureAndSend = useCallback(async () => {
+    const frame = screen.captureFrame();
+    if (!frame) return;
+
+    // Add frame as image and auto-send with context
+    const contextMsg = input.trim() || "Analise esta captura de tela e forneça insights relevantes.";
+    setInput(contextMsg);
+
+    // Use the existing image upload flow - add frame directly
+    const blob = await fetch(frame).then((r) => r.blob());
+    const file = new File([blob], `screen-${Date.now()}.jpg`, { type: "image/jpeg" });
+    addFiles([file]);
+  }, [screen, input, addFiles]);
+
+  const addInsight = useCallback((content: string, type: OverlayInsight["type"] = "info") => {
+    setOverlayInsights((prev) => [
+      ...prev,
+      { id: Date.now().toString(36), content, timestamp: new Date().toISOString(), type },
+    ]);
+  }, []);
 
   useEffect(() => {
     if (settings?.default_mode) setCurrentMode(settings.default_mode);
@@ -293,6 +336,12 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
             .slice(-6)
             .map((m) => ({ role: m.role, content: m.content }));
           extractMemories(lastMsgs);
+        }
+
+        // Add to overlay if screen sharing or voice active
+        if (overlayVisible && fullContent) {
+          const snippet = fullContent.slice(0, 500);
+          addInsight(snippet, "info");
         }
       },
       onError: (error) => {
@@ -502,18 +551,38 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
           </div>
         </div>
 
+        {/* Copilot Overlay */}
+        <CopilotOverlay
+          visible={overlayVisible}
+          insights={overlayInsights}
+          onClose={() => setOverlayVisible(false)}
+          onClear={() => setOverlayInsights([])}
+        />
+
         {/* Input */}
         <div className="sticky bottom-0 border-t border-border px-4 py-2 sm:p-4 bg-background/80 backdrop-blur-lg safe-bottom shrink-0">
           <div className="w-full max-w-full md:max-w-3xl md:mx-auto space-y-2">
+            <VoiceIndicator isListening={speech.isListening} interimTranscript={speech.interimTranscript} />
             <ImagePreviewGrid images={images} onRemove={removeImage} />
             <div className="flex gap-2 items-end">
               <ImageUploader onFiles={addFiles} disabled={streaming} />
+              <CopilotToolbar
+                isListening={speech.isListening}
+                isSpeechSupported={speech.isSupported}
+                isSharing={screen.isSharing}
+                overlayVisible={overlayVisible}
+                onToggleMic={speech.toggleListening}
+                onToggleScreen={screen.isSharing ? screen.stopSharing : screen.startSharing}
+                onCaptureFrame={handleCaptureAndSend}
+                onToggleOverlay={() => setOverlayVisible(!overlayVisible)}
+                disabled={streaming}
+              />
               <Textarea
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Digite sua mensagem..."
+                placeholder={speech.isListening ? "Ouvindo... fale agora" : "Digite sua mensagem..."}
                 className="min-h-[44px] max-h-[200px] resize-none bg-secondary/50 border-border focus:neon-border text-base overflow-y-auto transition-[height] duration-100 scrollbar-thin"
                 rows={1}
               />
