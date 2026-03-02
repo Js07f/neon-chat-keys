@@ -434,7 +434,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin overscroll-contain">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin overscroll-contain [-webkit-overflow-scrolling:touch] touch-pan-y">
           <div className="w-full max-w-full md:max-w-3xl md:mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-3 sm:space-y-4">
             {localMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4 text-muted-foreground px-4">
