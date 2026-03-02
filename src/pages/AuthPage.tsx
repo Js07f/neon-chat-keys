@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { KeyRound, Loader2, AlertCircle, Mail, Lock, UserPlus, LogIn } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -63,9 +63,18 @@ export default function AuthPage() {
             <KeyRound className="w-6 h-6 sm:w-7 sm:h-7 text-primary neon-text" />
           </div>
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight neon-text">NeonChat</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            {isSignUp ? "Crie sua conta para começar" : "Entre para acessar o chat"}
-          </p>
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={isSignUp ? "signup-subtitle" : "login-subtitle"}
+              className="text-sm sm:text-base text-muted-foreground"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2 }}
+            >
+              {isSignUp ? "Crie sua conta para começar" : "Entre para acessar o chat"}
+            </motion.p>
+          </AnimatePresence>
         </motion.div>
 
         <motion.form
@@ -136,7 +145,17 @@ export default function AuthPage() {
             ) : (
               <LogIn className="w-4 h-4 mr-2" />
             )}
-            {loading ? "Processando..." : isSignUp ? "Criar conta" : "Entrar"}
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={loading ? "loading" : isSignUp ? "signup" : "login"}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.15 }}
+              >
+                {loading ? "Processando..." : isSignUp ? "Criar conta" : "Entrar"}
+              </motion.span>
+            </AnimatePresence>
           </Button>
         </motion.form>
 
@@ -192,7 +211,17 @@ export default function AuthPage() {
             onClick={() => { setIsSignUp(!isSignUp); setError(""); setSuccess(""); }}
             className="text-primary hover:underline font-medium"
           >
-            {isSignUp ? "Entrar" : "Criar conta"}
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={isSignUp ? "go-login" : "go-signup"}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                {isSignUp ? "Entrar" : "Criar conta"}
+              </motion.span>
+            </AnimatePresence>
           </button>
         </motion.p>
       </motion.div>
