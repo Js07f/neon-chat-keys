@@ -45,14 +45,14 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-8">
+    <div className="flex min-h-[100dvh] items-center justify-center px-5 py-8 sm:p-6">
+      <div className="w-[90%] max-w-md space-y-6 sm:space-y-8">
         <div className="text-center space-y-2">
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center neon-border">
-            <KeyRound className="w-8 h-8 text-primary neon-text" />
+          <div className="mx-auto w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-primary/20 flex items-center justify-center neon-border">
+            <KeyRound className="w-7 h-7 sm:w-8 sm:h-8 text-primary neon-text" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight neon-text">NeonChat</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight neon-text">NeonChat</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             {isSignUp ? "Crie sua conta para começar" : "Entre para acessar o chat"}
           </p>
         </div>
@@ -66,7 +66,7 @@ export default function AuthPage() {
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-12 pl-10 bg-secondary/50 border-border focus:neon-border"
+                className="h-12 pl-10 text-base bg-secondary/50 border-border focus:neon-border"
                 autoFocus
               />
             </div>
@@ -77,7 +77,7 @@ export default function AuthPage() {
                 placeholder="Senha"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-12 pl-10 bg-secondary/50 border-border focus:neon-border"
+                className="h-12 pl-10 text-base bg-secondary/50 border-border focus:neon-border"
                 minLength={6}
               />
             </div>
@@ -100,7 +100,7 @@ export default function AuthPage() {
           <Button
             type="submit"
             disabled={loading || !email.trim() || !password.trim()}
-            className="w-full h-12 neon-glow font-semibold"
+            className="w-full h-12 text-base neon-glow font-semibold rounded-xl"
           >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -125,7 +125,7 @@ export default function AuthPage() {
         <Button
           type="button"
           variant="outline"
-          className="w-full h-12 text-base"
+          className="w-full h-12 text-base rounded-xl"
           onClick={async () => {
             setError("");
             const { error } = await lovable.auth.signInWithOAuth("google", {
@@ -134,7 +134,7 @@ export default function AuthPage() {
             if (error) setError(error.message || "Erro ao entrar com Google");
           }}
         >
-          <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 mr-2 shrink-0" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
             <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
