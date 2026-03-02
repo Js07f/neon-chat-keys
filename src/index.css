@@ -59,13 +59,14 @@
   html {
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
-    height: -webkit-fill-available;
+    height: 100%;
   }
 
   body {
     @apply bg-background text-foreground font-sans;
     font-family: 'Inter', sans-serif;
     overflow-x: hidden;
+    overflow-y: auto;
     min-height: 100dvh;
     min-height: -webkit-fill-available;
   }

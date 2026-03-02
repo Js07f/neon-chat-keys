@@ -103,9 +103,14 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
   }, [activeId, dbGetMessages]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-    }
+    const el = scrollRef.current;
+    if (!el) return;
+    const scrollToBottom = () => el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    scrollToBottom();
+    // passive touch listener for smooth scrolling
+    const noop = () => {};
+    el.addEventListener("touchmove", noop, { passive: true });
+    return () => el.removeEventListener("touchmove", noop);
   }, [localMessages]);
 
   useEffect(() => {
@@ -362,7 +367,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
   );
 
   return (
-    <div className="flex flex-col min-h-[100dvh] h-[100dvh] overflow-hidden bg-background sm:flex-row">
+    <div className="flex flex-col h-[100dvh] bg-background sm:flex-row">
       {isMobile ? (
         <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
           <SheetContent side="left" className="w-[280px] p-0 bg-sidebar border-border">
@@ -434,15 +439,15 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin overscroll-contain [-webkit-overflow-scrolling:touch] touch-pan-y">
-          <div className="w-full max-w-full md:max-w-3xl md:mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-3 sm:space-y-4">
+        <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-thin overscroll-contain [-webkit-overflow-scrolling:touch] touch-pan-y">
+          <div className="w-full max-w-full md:max-w-3xl md:mx-auto px-4 py-2 sm:py-6 space-y-3 sm:space-y-4">
             {localMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4 text-muted-foreground px-4">
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-primary/10 flex items-center justify-center neon-border">
                   <Bot className="w-7 h-7 sm:w-8 sm:h-8 text-primary opacity-60" />
                 </div>
                 <div className="space-y-2">
-                  <p className="text-base sm:text-lg font-medium text-foreground">Como posso ajudar?</p>
+                  <p className="text-sm sm:text-lg font-medium text-foreground">Como posso ajudar?</p>
                   <p className="text-xs sm:text-sm">Envie uma mensagem ou imagem para começar</p>
                 </div>
               </div>
@@ -452,7 +457,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
                 return (
                   <div
                     key={msg.id}
-                    className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300"
+                    className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 text-sm sm:text-base"
                     style={{ animationDelay: `${Math.min(idx * 30, 150)}ms` }}
                   >
                     {isLast && msg.role === "assistant" && toolEvents.length > 0 && (
@@ -471,7 +476,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
         </div>
 
         {/* Input */}
-        <div className="sticky bottom-0 border-t border-border p-2 sm:p-4 bg-background/80 backdrop-blur-lg safe-bottom shrink-0">
+        <div className="sticky bottom-0 border-t border-border px-4 py-2 sm:p-4 bg-background/80 backdrop-blur-lg safe-bottom shrink-0">
           <div className="w-full max-w-full md:max-w-3xl md:mx-auto space-y-2">
             <ImagePreviewGrid images={images} onRemove={removeImage} />
             <div className="flex gap-2 items-end">
