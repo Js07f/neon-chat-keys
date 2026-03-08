@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Loader2, Bot, PanelLeftClose, PanelLeft, Menu } from "lucide-react";
+import { Send, Loader2, Bot, PanelLeftClose, PanelLeft, Menu, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -19,6 +19,9 @@ import SettingsPanel from "@/modules/chat/components/SettingsPanel";
 import ChatSidebar from "@/modules/chat/components/ChatSidebar";
 import WorkspaceSelector from "@/modules/workspaces/components/WorkspaceSelector";
 import ToolIndicator from "@/modules/tools/components/ToolIndicator";
+import TypingIndicator from "@/modules/chat/components/TypingIndicator";
+import ParticleBackground from "@/modules/chat/components/ParticleBackground";
+import EmojiPicker from "@/modules/chat/components/EmojiPicker";
 import { DEFAULT_MODES, type ChatMode } from "@/modules/chat/types";
 import { useMemory } from "@/modules/chat/hooks/useMemory";
 import { useGlobalMemory, shouldInjectMemory, buildMemoryPrompt } from "@/modules/chat/hooks/useGlobalMemory";
@@ -124,12 +127,8 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
   const handleCaptureAndSend = useCallback(async () => {
     const frame = screen.captureFrame();
     if (!frame) return;
-
-    // Add frame as image and auto-send with context
     const contextMsg = input.trim() || "Analise esta captura de tela e forneça insights relevantes.";
     setInput(contextMsg);
-
-    // Use the existing image upload flow - add frame directly
     const blob = await fetch(frame).then((r) => r.blob());
     const file = new File([blob], `screen-${Date.now()}.jpg`, { type: "image/jpeg" });
     addFiles([file]);
@@ -170,7 +169,6 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
     if (!el) return;
     const scrollToBottom = () => el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     scrollToBottom();
-    // passive touch listener for smooth scrolling
     const noop = () => {};
     el.addEventListener("touchmove", noop, { passive: true });
     return () => el.removeEventListener("touchmove", noop);
@@ -226,6 +224,23 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
     if (DEFAULT_MODES[currentMode]) return undefined;
     return currentMode;
   };
+
+  // Notification sound
+  const playNotificationSound = useCallback(() => {
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 800;
+      osc.type = "sine";
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch {}
+  }, []);
 
   const sendMessage = async () => {
     if ((!input.trim() && images.length === 0) || streaming || isUploading) return;
@@ -314,6 +329,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
       onDone: () => {
         setStreaming(false);
         setStreamPhase(null);
+        playNotificationSound();
 
         // Save assistant message to DB
         if (activeWorkspaceId && finalConvoId) {
@@ -435,8 +451,12 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
     />
   );
 
+  const showTypingIndicator = streaming && streamPhase && streamPhase !== "streaming";
+
   return (
-    <div className="flex flex-col h-[100dvh] bg-background sm:flex-row">
+    <div className="flex flex-col h-[100dvh] bg-background sm:flex-row relative">
+      <ParticleBackground />
+
       {isMobile ? (
         <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
           <SheetContent side="left" className="w-[280px] p-0 bg-sidebar border-border">
@@ -445,7 +465,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
         </Sheet>
       ) : (
         <div
-          className={`${sidebarOpen ? "w-72" : "w-0"} transition-all duration-300 overflow-hidden border-r border-border bg-sidebar shrink-0`}
+          className={`${sidebarOpen ? "w-72" : "w-0"} transition-all duration-300 overflow-hidden border-r border-border bg-sidebar shrink-0 relative z-10`}
         >
           {sidebarContent}
         </div>
@@ -453,12 +473,12 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
 
       <div
         ref={dropRef}
-        className="flex-1 flex flex-col min-w-0"
+        className="flex-1 flex flex-col min-w-0 relative z-10"
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
       >
         {/* Header */}
-        <div className="min-h-[48px] border-b border-border flex items-center px-2 sm:px-3 gap-1 sm:gap-2 py-1.5 sm:py-2 shrink-0">
+        <div className="min-h-[48px] border-b border-border/50 flex items-center px-2 sm:px-3 gap-1 sm:gap-2 py-1.5 sm:py-2 shrink-0 bg-background/60 backdrop-blur-md">
           {isMobile ? (
             <Button variant="ghost" size="icon" className="min-h-10 min-w-10 shrink-0" onClick={() => setMobileSidebarOpen(true)}>
               <Menu className="w-5 h-5" />
@@ -513,40 +533,60 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
             (scrollRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
             (pullRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
           }}
-          className="flex-1 min-h-0 overflow-y-auto scrollbar-thin overscroll-contain [-webkit-overflow-scrolling:touch] touch-pan-y"
+          className="flex-1 min-h-0 overflow-y-auto scrollbar-thin overscroll-contain [-webkit-overflow-scrolling:touch] touch-pan-y grid-bg"
         >
           <PullToRefreshIndicator pullDistance={pullDistance} refreshing={pullRefreshing} triggered={pullTriggered} />
           <div className="w-full max-w-full md:max-w-3xl md:mx-auto px-4 py-2 sm:py-6 space-y-3 sm:space-y-4">
             {localMessages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4 text-muted-foreground px-4">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-primary/10 flex items-center justify-center neon-border">
-                  <Bot className="w-7 h-7 sm:w-8 sm:h-8 text-primary opacity-60" />
+              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-5 text-muted-foreground px-4">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent flex items-center justify-center neon-border animate-glow-pulse">
+                  <Sparkles className="w-8 h-8 sm:w-10 sm:h-10 text-primary opacity-70" />
                 </div>
                 <div className="space-y-2">
-                  <p className="text-sm sm:text-lg font-medium text-foreground">Como posso ajudar?</p>
-                  <p className="text-xs sm:text-sm">Envie uma mensagem ou imagem para começar</p>
+                  <h1 className="text-lg sm:text-2xl font-semibold text-foreground neon-text">
+                    Neon Chat
+                  </h1>
+                  <p className="text-xs sm:text-sm text-muted-foreground max-w-sm">
+                    Seu assistente de IA futurista. Envie uma mensagem, imagem ou use o microfone para começar.
+                  </p>
+                </div>
+                <div className="flex gap-2 flex-wrap justify-center mt-2">
+                  {["💡 Me dê uma ideia", "📝 Resuma um texto", "🎨 Crie algo criativo"].map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      onClick={() => { setInput(suggestion.slice(2).trim()); textareaRef.current?.focus(); }}
+                      className="px-3 py-1.5 rounded-full text-xs border border-border/50 bg-secondary/30 hover:bg-secondary/60 text-muted-foreground hover:text-foreground transition-all hover:neon-border"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
                 </div>
               </div>
             ) : (
-              localMessages.map((msg, idx) => {
-                const isLast = idx === localMessages.length - 1;
-                return (
-                  <div
-                    key={msg.id}
-                    className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 text-sm sm:text-base"
-                    style={{ animationDelay: `${Math.min(idx * 30, 150)}ms` }}
-                  >
-                    {isLast && msg.role === "assistant" && toolEvents.length > 0 && (
-                      <ToolIndicator events={toolEvents} />
-                    )}
-                    <MessageBubble
-                      message={msg}
-                      streamPhase={streamPhase}
-                      isLast={isLast}
-                    />
-                  </div>
-                );
-              })
+              <>
+                {localMessages.map((msg, idx) => {
+                  const isLast = idx === localMessages.length - 1;
+                  return (
+                    <div
+                      key={msg.id}
+                      className="animate-message-in text-sm sm:text-base"
+                      style={{ animationDelay: `${Math.min(idx * 30, 150)}ms` }}
+                    >
+                      {isLast && msg.role === "assistant" && toolEvents.length > 0 && (
+                        <ToolIndicator events={toolEvents} />
+                      )}
+                      <MessageBubble
+                        message={msg}
+                        streamPhase={streamPhase}
+                        isLast={isLast}
+                      />
+                    </div>
+                  );
+                })}
+                {showTypingIndicator && localMessages[localMessages.length - 1]?.content === "" && (
+                  <TypingIndicator />
+                )}
+              </>
             )}
           </div>
         </div>
@@ -560,12 +600,13 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
         />
 
         {/* Input */}
-        <div className="sticky bottom-0 border-t border-border px-4 py-2 sm:p-4 bg-background/80 backdrop-blur-lg safe-bottom shrink-0">
+        <div className="sticky bottom-0 border-t border-border/50 px-4 py-2 sm:p-4 bg-background/70 backdrop-blur-xl safe-bottom shrink-0">
           <div className="w-full max-w-full md:max-w-3xl md:mx-auto space-y-2">
             <VoiceIndicator isListening={speech.isListening} interimTranscript={speech.interimTranscript} />
             <ImagePreviewGrid images={images} onRemove={removeImage} />
-            <div className="flex gap-2 items-end">
+            <div className="flex gap-2 items-end rounded-xl border border-border/50 bg-secondary/30 p-1.5 neon-input-focus transition-all">
               <ImageUploader onFiles={addFiles} disabled={streaming} />
+              <EmojiPicker onSelect={(emoji) => setInput((prev) => prev + emoji)} disabled={streaming} />
               <CopilotToolbar
                 isListening={speech.isListening}
                 isSpeechSupported={speech.isSupported}
@@ -582,19 +623,22 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={speech.isListening ? "Ouvindo... fale agora" : "Digite sua mensagem..."}
-                className="min-h-[44px] max-h-[200px] resize-none bg-secondary/50 border-border focus:neon-border text-base overflow-y-auto transition-[height] duration-100 scrollbar-thin"
+                placeholder={speech.isListening ? "🎙️ Ouvindo... fale agora" : "Mensagem para Neon Chat..."}
+                className="min-h-[44px] max-h-[200px] resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base overflow-y-auto transition-[height] duration-100 scrollbar-thin placeholder:text-muted-foreground/50"
                 rows={1}
               />
               <Button
                 onClick={sendMessage}
                 disabled={(!input.trim() && images.length === 0) || streaming || isUploading}
                 size="icon"
-                className="min-h-12 min-w-12 shrink-0 neon-glow"
+                className="min-h-11 min-w-11 shrink-0 rounded-lg bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 neon-glow transition-all duration-200"
               >
                 {streaming ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
               </Button>
             </div>
+            <p className="text-[10px] text-muted-foreground/40 text-center">
+              Neon Chat pode cometer erros. Considere verificar informações importantes.
+            </p>
           </div>
         </div>
       </div>
