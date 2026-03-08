@@ -65,10 +65,10 @@ async function webSearch(query: string, apiKey: string): Promise<string> {
   }
 }
 
-// Image generation via Lovable AI (gemini-2.5-flash-image)
+// Image generation via Lovable AI (images/generations endpoint)
 async function generateImage(prompt: string, apiKey: string): Promise<string> {
   try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -76,45 +76,44 @@ async function generateImage(prompt: string, apiKey: string): Promise<string> {
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash-image",
-        messages: [
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        modalities: ["image", "text"],
+        prompt: prompt,
+        n: 1,
+        size: "1024x1024",
+        quality: "hd",
       }),
     });
 
     if (!response.ok) {
       const text = await response.text();
       console.error("Image generation error:", response.status, text);
-      return `[Erro ao gerar imagem: ${response.status}]`;
+      return `[Erro ao gerar imagem: ${response.status} - ${text}]`;
     }
 
     const data = await response.json();
-    const images = data.choices?.[0]?.message?.images;
+    console.log("Image generation response keys:", Object.keys(data));
+
+    // The response contains data[].url with direct image URLs
+    const imageUrl = data.data?.[0]?.url;
     
-    if (!images || images.length === 0) {
-      const textContent = data.choices?.[0]?.message?.content || "";
-      return `[Não foi possível gerar a imagem. ${textContent}]`;
+    if (!imageUrl) {
+      console.error("No image URL in response:", JSON.stringify(data).slice(0, 500));
+      return `[Não foi possível gerar a imagem]`;
     }
 
-    // Get the base64 data URL
-    const base64DataUrl = images[0]?.image_url?.url;
-    if (!base64DataUrl) {
-      return "[Erro: imagem gerada sem dados]";
+    // If the URL is a direct URL (not base64), return it directly
+    if (imageUrl.startsWith("http")) {
+      return `IMAGE_URL:${imageUrl}`;
     }
 
-    // Upload to Supabase Storage
+    // If base64, upload to Supabase Storage
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Extract base64 content
-    const base64Match = base64DataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+    const base64Match = imageUrl.match(/^data:image\/(\w+);base64,(.+)$/);
     if (!base64Match) {
-      return "[Erro: formato de imagem inválido]";
+      // Maybe it's raw base64 without prefix
+      return `IMAGE_URL:${imageUrl}`;
     }
 
     const ext = base64Match[1] === "jpeg" ? "jpg" : base64Match[1];
@@ -136,18 +135,14 @@ async function generateImage(prompt: string, apiKey: string): Promise<string> {
 
     if (uploadError) {
       console.error("Upload error:", uploadError);
-      // Fall back to returning base64 directly
-      return `![Imagem gerada](${base64DataUrl})`;
+      return `![Imagem gerada](${imageUrl})`;
     }
 
     const { data: publicUrlData } = supabase.storage
       .from("chat-images")
       .getPublicUrl(fileName);
 
-    const publicUrl = publicUrlData.publicUrl;
-    const caption = data.choices?.[0]?.message?.content || "";
-    
-    return `IMAGE_URL:${publicUrl}${caption ? `\n${caption}` : ""}`;
+    return `IMAGE_URL:${publicUrlData.publicUrl}`;
   } catch (e) {
     console.error("Image generation error:", e);
     return `[Erro ao gerar imagem: ${e instanceof Error ? e.message : "desconhecido"}]`;
