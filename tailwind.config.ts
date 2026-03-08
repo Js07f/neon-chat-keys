@@ -81,11 +81,26 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.5" },
         },
+        "message-in": {
+          from: { opacity: "0", transform: "translateY(12px) scale(0.97)" },
+          to: { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        "typing-bounce": {
+          "0%, 60%, 100%": { transform: "translateY(0)" },
+          "30%": { transform: "translateY(-6px)" },
+        },
+        "glow-pulse": {
+          "0%, 100%": { boxShadow: "0 0 8px hsl(270 80% 60% / 0.2)" },
+          "50%": { boxShadow: "0 0 20px hsl(270 80% 60% / 0.4), 0 0 40px hsl(270 80% 60% / 0.15)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "pulse-neon": "pulse-neon 2s ease-in-out infinite",
+        "message-in": "message-in 0.35s ease-out forwards",
+        "typing-bounce": "typing-bounce 1.2s ease-in-out infinite",
+        "glow-pulse": "glow-pulse 2.5s ease-in-out infinite",
       },
     },
   },
