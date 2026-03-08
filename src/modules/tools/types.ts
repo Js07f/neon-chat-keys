@@ -45,6 +45,18 @@ export const AVAILABLE_TOOLS: ToolDefinition[] = [
       required: ["expression"],
     },
   },
+  {
+    name: "generate_image",
+    description: "Gera imagens a partir de descrições textuais. Use quando o usuário pedir para criar, gerar, desenhar ou fazer uma imagem, ilustração, foto, arte, logo ou qualquer conteúdo visual.",
+    icon: "🎨",
+    parameters: {
+      type: "object",
+      properties: {
+        prompt: { type: "string", description: "Descrição detalhada da imagem a ser gerada em inglês. Traduza o pedido do usuário para inglês e adicione detalhes de estilo." },
+      },
+      required: ["prompt"],
+    },
+  },
 ];
 
 // Convert our tool definitions to OpenAI-compatible format for the AI gateway
