@@ -212,7 +212,9 @@ async function buildSystemPrompt(
     `Você tem acesso a ferramentas que pode usar quando necessário:
 - web_search: para buscar informações atualizadas
 - math: para resolver expressões matemáticas com precisão
-Use as ferramentas quando a pergunta do usuário se beneficiaria de informações externas ou cálculos precisos.`
+- generate_image: para gerar imagens a partir de descrições textuais
+Use as ferramentas quando a pergunta do usuário se beneficiaria de informações externas, cálculos precisos ou geração de imagens.
+Quando o usuário pedir para criar/gerar/desenhar qualquer imagem, SEMPRE use a ferramenta generate_image com um prompt detalhado em inglês.`
   );
 
   return { systemPrompt: layers.join("\n\n"), temperature };
