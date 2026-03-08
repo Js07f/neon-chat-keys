@@ -1,4 +1,4 @@
-import { Wrench, Search, Calculator, Loader2, Check } from "lucide-react";
+import { Wrench, Search, Calculator, Loader2, Check, Image } from "lucide-react";
 import type { ToolEvent } from "@/modules/chat/hooks/useChatStream";
 
 interface ToolIndicatorProps {
@@ -8,6 +8,7 @@ interface ToolIndicatorProps {
 const TOOL_META: Record<string, { label: string; icon: React.ReactNode }> = {
   web_search: { label: "Buscando na web", icon: <Search className="w-3.5 h-3.5" /> },
   math: { label: "Calculando", icon: <Calculator className="w-3.5 h-3.5" /> },
+  generate_image: { label: "Gerando imagem", icon: <Image className="w-3.5 h-3.5" /> },
 };
 
 export default function ToolIndicator({ events }: ToolIndicatorProps) {
