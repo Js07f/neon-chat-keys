@@ -49,6 +49,11 @@ export default function ToolIndicator({ events }: ToolIndicatorProps) {
                 {state.input.expression}
               </span>
             )}
+            {state.input?.prompt && (
+              <span className="text-[10px] opacity-70 truncate max-w-[200px]">
+                "{state.input.prompt}"
+              </span>
+            )}
             {state.done ? (
               <Check className="w-3 h-3 text-primary ml-auto" />
             ) : (
