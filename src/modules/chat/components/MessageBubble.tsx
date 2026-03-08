@@ -106,12 +106,7 @@ export default function MessageBubble({ message, streamPhase, isLast }: MessageB
             <span className="whitespace-pre-wrap break-words">{message.content}</span>
           ) : message.content ? (
             <div className="prose prose-invert prose-sm max-w-none [&_p]:my-1 [&_pre]:bg-transparent [&_pre]:p-0 [&_pre]:overflow-x-auto [&_pre]:max-w-[calc(100vw-6rem)] sm:[&_pre]:max-w-none [&_code]:font-mono [&_code]:text-xs sm:[&_code]:text-sm [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-md break-words">
-              <ReactMarkdown
-                rehypePlugins={[rehypeHighlight]}
-                components={{ code: CodeBlock as any }}
-              >
-                {message.content}
-              </ReactMarkdown>
+              {renderContentWithImages(message.content)}
             </div>
           ) : null}
         </div>
