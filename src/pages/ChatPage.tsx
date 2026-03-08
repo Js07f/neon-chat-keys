@@ -551,7 +551,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
                   </p>
                 </div>
                 <div className="flex gap-2 flex-wrap justify-center mt-2">
-                  {["💡 Me dê uma ideia", "📝 Resuma um texto", "🎨 Crie algo criativo"].map((suggestion) => (
+                  {["💡 Me dê uma ideia", "📝 Resuma um texto", "🎨 Gere uma imagem criativa", "🖼️ Crie um logo"].map((suggestion) => (
                     <button
                       key={suggestion}
                       onClick={() => { setInput(suggestion.slice(2).trim()); textareaRef.current?.focus(); }}

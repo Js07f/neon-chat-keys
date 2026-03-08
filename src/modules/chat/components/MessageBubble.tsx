@@ -76,6 +76,61 @@ function Timestamp({ time }: { time: string }) {
   }
 }
 
+function renderContentWithImages(content: string) {
+  // Check for IMAGE_URL: pattern from image generation tool
+  const imageUrlRegex = /IMAGE_URL:(https?:\/\/[^\s\n]+)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+  let key = 0;
+
+  while ((match = imageUrlRegex.exec(content)) !== null) {
+    // Add text before image
+    const textBefore = content.slice(lastIndex, match.index);
+    if (textBefore.trim()) {
+      parts.push(
+        <ReactMarkdown key={key++} rehypePlugins={[rehypeHighlight]} components={{ code: CodeBlock as any }}>
+          {textBefore}
+        </ReactMarkdown>
+      );
+    }
+    // Add image
+    parts.push(
+      <div key={key++} className="my-3">
+        <img
+          src={match[1]}
+          alt="Imagem gerada"
+          className="max-w-full h-auto rounded-xl neon-border shadow-lg shadow-primary/10 cursor-pointer hover:scale-[1.02] transition-transform"
+          loading="lazy"
+          onClick={() => window.open(match![1], "_blank")}
+        />
+      </div>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text
+  const remaining = content.slice(lastIndex);
+  if (remaining.trim()) {
+    parts.push(
+      <ReactMarkdown key={key++} rehypePlugins={[rehypeHighlight]} components={{ code: CodeBlock as any }}>
+        {remaining}
+      </ReactMarkdown>
+    );
+  }
+
+  // No IMAGE_URL found, render normally
+  if (parts.length === 0) {
+    return (
+      <ReactMarkdown rehypePlugins={[rehypeHighlight]} components={{ code: CodeBlock as any }}>
+        {content}
+      </ReactMarkdown>
+    );
+  }
+
+  return <>{parts}</>;
+}
+
 export default function MessageBubble({ message, streamPhase, isLast }: MessageBubbleProps) {
   const isUser = message.role === "user";
   const showPhase = isLast && !isUser && streamPhase && streamPhase !== "streaming";
@@ -106,12 +161,7 @@ export default function MessageBubble({ message, streamPhase, isLast }: MessageB
             <span className="whitespace-pre-wrap break-words">{message.content}</span>
           ) : message.content ? (
             <div className="prose prose-invert prose-sm max-w-none [&_p]:my-1 [&_pre]:bg-transparent [&_pre]:p-0 [&_pre]:overflow-x-auto [&_pre]:max-w-[calc(100vw-6rem)] sm:[&_pre]:max-w-none [&_code]:font-mono [&_code]:text-xs sm:[&_code]:text-sm [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-md break-words">
-              <ReactMarkdown
-                rehypePlugins={[rehypeHighlight]}
-                components={{ code: CodeBlock as any }}
-              >
-                {message.content}
-              </ReactMarkdown>
+              {renderContentWithImages(message.content)}
             </div>
           ) : null}
         </div>

@@ -60,6 +60,19 @@ const TOOLS_DEFINITION = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "generate_image",
+      description: "Gera imagens a partir de descrições textuais. Use quando o usuário pedir para criar, gerar, desenhar ou fazer uma imagem, ilustração, foto, arte, logo ou qualquer conteúdo visual.",
+      parameters: {
+        type: "object",
+        properties: { prompt: { type: "string", description: "Descrição detalhada da imagem a ser gerada em inglês. Traduza o pedido do usuário para inglês e adicione detalhes de estilo, iluminação e composição." } },
+        required: ["prompt"],
+        additionalProperties: false,
+      },
+    },
+  },
 ];
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -199,7 +212,9 @@ async function buildSystemPrompt(
     `Você tem acesso a ferramentas que pode usar quando necessário:
 - web_search: para buscar informações atualizadas
 - math: para resolver expressões matemáticas com precisão
-Use as ferramentas quando a pergunta do usuário se beneficiaria de informações externas ou cálculos precisos.`
+- generate_image: para gerar imagens a partir de descrições textuais
+Use as ferramentas quando a pergunta do usuário se beneficiaria de informações externas, cálculos precisos ou geração de imagens.
+Quando o usuário pedir para criar/gerar/desenhar qualquer imagem, SEMPRE use a ferramenta generate_image com um prompt detalhado em inglês.`
   );
 
   return { systemPrompt: layers.join("\n\n"), temperature };
